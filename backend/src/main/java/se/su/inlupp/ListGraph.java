@@ -43,7 +43,7 @@ public class ListGraph<T> implements Graph<T> {
 
     @Override
     public String toString(){
-      return "Edge: " + name + " Destination: " + destination + " Weight: " + weight;
+      return  " till " + destination + " med " + name + " tar " + weight;
     }
 
   }
