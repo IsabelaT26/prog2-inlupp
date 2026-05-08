@@ -11,7 +11,7 @@
 
   <properties>
     <javafx.version>25</javafx.version>
-    <mainClassName>se.su.inlupp.Gui</mainClassName>
+    <mainClassName>se.su.inlupp.MapApplication</mainClassName>
   </properties>
 
   <dependencies>
