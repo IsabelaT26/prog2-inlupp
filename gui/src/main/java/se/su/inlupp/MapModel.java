@@ -5,6 +5,10 @@ public class MapModel {
     private final ListGraph<Place> graph = new ListGraph<>();
 
     public void addPlace(Place place) {
+        if (place.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Place name cannot be empty");
+        }
+
         graph.add(place);
     }
 
