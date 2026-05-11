@@ -15,6 +15,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 import javafx.scene.text.Text;
 
 import java.util.*;
@@ -27,8 +28,18 @@ public class MapView {
     private BorderPane root;
     private Pane mapPane;
     private Button addPlace;
+    private  Button connect;
     private LinkedList<Place> selectedPlacesList = new LinkedList<>();
     private Map<Place, Circle> selectedPlacesMap = new HashMap<>();
+
+    private enum Mode {
+        NORMAL,
+        CONNECT,
+        REMOVE,
+        FIND_PATH
+    }
+
+    private Mode currentMode = Mode.NORMAL;
 
     public MapView(MapModel model) {
         this.model = model;
@@ -70,7 +81,9 @@ public class MapView {
         addPlace = new Button("Add place");
         addPlace.setOnAction(new AddButtonHandler());
 
-        Button connect = new Button("Connect");
+        connect = new Button("Connect");
+        connect.setOnAction(new ConnectButtonHandler());
+
         Button findPath = new Button("Find path");
         Button remove = new Button("Remove");
 
@@ -147,15 +160,12 @@ public class MapView {
         Circle circle = new Circle(place.getX(), place.getY(), 20);
         circle.setFill(PLACE_CIRCLE_COLOUR);
 
-        circle.setOnMousePressed(new SelectHandler(place,circle));
+        circle.setOnMouseClicked(new SelectHandler(place,circle));
 
         Text text = new Text(place.getX() - 20, place.getY() - 25, place.getName());
         text.setFill(PLACE_CIRCLE_COLOUR);
 
         circle.setOnMouseDragged(new DragHandler(place, circle,text));
-
-        Group group = new Group(circle, text);
-        //group.setOnMouseDragged(new DragHandler(place, circle));
 
         mapPane.getChildren().addAll(circle, text);
     }
@@ -182,6 +192,72 @@ public class MapView {
         }
     }
 
+    private void handlePlaceClicked(Place place, Circle circle) {
+        switch (currentMode) {
+            case NORMAL:
+                return;
+
+            case REMOVE:
+                // later remove place
+                return;
+
+            case FIND_PATH:
+                // later path logic
+                return;
+
+            case CONNECT:
+                handleConnectSelection(place, circle);
+                return;
+        }
+    }
+
+    private void clearSelection(){
+        selectedPlacesMap.values().forEach(circle -> circle.setFill(PLACE_CIRCLE_COLOUR));
+        selectedPlacesMap.clear();
+        selectedPlacesList.clear();
+    }
+
+    private void drawLine(Place place1, Place place2){
+        Line line = new Line(place1.getX(), place1.getY(), place2.getX(), place2.getY());
+        line.setStroke(PLACE_CIRCLE_COLOUR);
+        mapPane.getChildren().add(line);
+    }
+
+    private void resetModeAfterAction() {
+        clearSelection();
+        currentMode = Mode.NORMAL;
+        connect.setDisable(false);
+        mapPane.setCursor(Cursor.DEFAULT);
+    }
+
+    private void handleConnectSelection(Place place, Circle circle) {
+        toggleSelection(place, circle);
+
+        if (selectedPlacesList.size() < 2) {
+            return;
+        }
+
+        Place place1 = selectedPlacesList.get(0);
+        Place place2 = selectedPlacesList.get(1);
+
+        Optional<String> name = askForRoadName();
+        Optional<Integer> distance = askForRoadDistance();
+
+        if (name.isEmpty() || distance.isEmpty()) {
+            resetModeAfterAction();
+            return;
+        }
+
+        try {
+            model.connectPlaces(place1, place2, name.get(), distance.get());
+            drawLine(place1, place2);
+        } catch (IllegalArgumentException e) {
+            showError(e.getMessage());
+        }
+
+        resetModeAfterAction();
+    }
+
     // ---------- Dialogs ----------
 
     private Optional<String> askForPlaceName() {
@@ -192,6 +268,37 @@ public class MapView {
         dialog.setContentText("Name:");
 
         return dialog.showAndWait();
+    }
+
+    private Optional<String> askForRoadName() {
+        TextInputDialog dialog = new TextInputDialog();
+
+        dialog.setTitle("Road Info");
+        dialog.setHeaderText("Enter a name for the road");
+        dialog.setContentText("Name:");
+
+        return dialog.showAndWait();
+    }
+
+    private Optional<Integer> askForRoadDistance() {
+        TextInputDialog dialog = new TextInputDialog();
+
+        dialog.setTitle("Road Info");
+        dialog.setHeaderText("Enter the distance");
+        dialog.setContentText("Distance:");
+        Optional<String> result = dialog.showAndWait();
+
+        if(result.isPresent()) {
+            try {
+                int distance = Integer.parseInt(result.get());
+                return Optional.of(distance);
+            } catch(NumberFormatException e) {
+                showError("Distance must be a number.");
+                connect.setDisable(false);
+            }
+        }
+
+        return Optional.empty();
     }
 
     private void showError(String errorMessage) {
@@ -231,12 +338,12 @@ public class MapView {
 
         @Override
         public void handle(MouseEvent event) {
-            toggleSelection(place, circle);
+            handlePlaceClicked(place, circle);
             event.consume();
         }
     }
 
-    class DragHandler implements EventHandler<MouseEvent> {
+    private class DragHandler implements EventHandler<MouseEvent> {
 
         private Place place;
         private Circle circle;
@@ -260,6 +367,16 @@ public class MapView {
             text.setX(newX - 20);
             text.setY(newY - 25);
             place.setPosition(newX, newY);
+        }
+    }
+
+    private class ConnectButtonHandler implements EventHandler<ActionEvent> {
+        @Override
+        public void handle(ActionEvent event) {
+            clearSelection();
+            currentMode = Mode.CONNECT;
+            mapPane.setCursor(Cursor.CROSSHAIR);
+            connect.setDisable(true);
         }
     }
 }
