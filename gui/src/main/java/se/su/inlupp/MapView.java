@@ -4,7 +4,6 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Cursor;
-import javafx.scene.Group;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -28,17 +27,14 @@ public class MapView {
     private BorderPane root;
     private Pane mapPane;
     private Button addPlace;
-    private  Button connect;
-    private LinkedList<Place> selectedPlacesList = new LinkedList<>();
-    private Map<Place, Circle> selectedPlacesMap = new HashMap<>();
+    private Button connect;
+    private Button removePlace;
+    private Button findPath;
+    private Button disconnect;
 
-    private enum Mode {
-        NORMAL,
-        CONNECT,
-        REMOVE,
-        FIND_PATH
-    }
+    private final List<ConnectionView> connectionViews = new ArrayList<>();
 
+    private final SelectionManager selectionManager = new SelectionManager();
     private Mode currentMode = Mode.NORMAL;
 
     public MapView(MapModel model) {
@@ -84,10 +80,13 @@ public class MapView {
         connect = new Button("Connect");
         connect.setOnAction(new ConnectButtonHandler());
 
-        Button findPath = new Button("Find path");
-        Button remove = new Button("Remove");
+        disconnect = new Button("Disconnect");
+        disconnect.setOnAction(new DisconnectButtonHandler());
 
-        ToolBar toolBar = new ToolBar(addPlace, connect, findPath, remove);
+        findPath = new Button("Find path");
+        removePlace = new Button("Remove Place");
+
+        ToolBar toolBar = new ToolBar(addPlace, connect, disconnect, findPath, removePlace);
 
         return new VBox(menuBar, toolBar);
     }
@@ -160,7 +159,7 @@ public class MapView {
         Circle circle = new Circle(place.getX(), place.getY(), 20);
         circle.setFill(PLACE_CIRCLE_COLOUR);
 
-        circle.setOnMouseClicked(new SelectHandler(place,circle));
+        circle.setOnMousePressed(new SelectHandler(place,circle));
 
         Text text = new Text(place.getX() - 20, place.getY() - 25, place.getName());
         text.setFill(PLACE_CIRCLE_COLOUR);
@@ -171,26 +170,6 @@ public class MapView {
     }
 
     //-----Select Place Feature-----
-
-    private void toggleSelection(Place place, Circle circle){
-        if(selectedPlacesMap.containsKey(place)){
-            selectedPlacesMap.remove(place);
-            selectedPlacesList.remove(place);
-            circle.setFill(PLACE_CIRCLE_COLOUR);
-        } else if (selectedPlacesMap.size()< 2) {
-            selectedPlacesMap.put(place,circle);
-            selectedPlacesList.add(place);
-            circle.setFill(Color.ORANGE);
-        }else {
-            Place firsSelectedPlace = selectedPlacesList.getFirst();
-            Circle firstSelectPlaceCircle = selectedPlacesMap.get(firsSelectedPlace);
-            firstSelectPlaceCircle.setFill(PLACE_CIRCLE_COLOUR);
-            selectedPlacesMap.remove(firsSelectedPlace);
-            selectedPlacesList.removeFirst();
-            toggleSelection(place,circle);
-            //showError("You can only select two places at a time.");
-        }
-    }
 
     private void handlePlaceClicked(Place place, Circle circle) {
         switch (currentMode) {
@@ -206,53 +185,89 @@ public class MapView {
                 return;
 
             case CONNECT:
-                handleConnectSelection(place, circle);
+                selectionManager.toggleSelection(place, circle);
+                handleConnectSelection();
+                return;
+            case DISCONNECT:
+                selectionManager.toggleSelection(place, circle);
+                handleDisconnectSelection();
                 return;
         }
     }
 
-    private void clearSelection(){
-        selectedPlacesMap.values().forEach(circle -> circle.setFill(PLACE_CIRCLE_COLOUR));
-        selectedPlacesMap.clear();
-        selectedPlacesList.clear();
-    }
+    private void drawLine(Place place1, Place place2) {
+        Circle circle1 = selectionManager.getCircle(place1);
+        Circle circle2 = selectionManager.getCircle(place2);
 
-    private void drawLine(Place place1, Place place2){
-        Line line = new Line(place1.getX(), place1.getY(), place2.getX(), place2.getY());
-        line.setStroke(PLACE_CIRCLE_COLOUR);
-        mapPane.getChildren().add(line);
+        ConnectionView connectionView = new ConnectionView(
+                place1,
+                place2,
+                circle1,
+                circle2,
+                model.getConnectionName(place1, place2),
+                PLACE_CIRCLE_COLOUR
+        );
+
+        connectionViews.add(connectionView);
+
+        mapPane.getChildren().add(1,connectionView.getRoot());
     }
 
     private void resetModeAfterAction() {
-        clearSelection();
+        selectionManager.clearSelection();
         currentMode = Mode.NORMAL;
         connect.setDisable(false);
+        disconnect.setDisable(false);
         mapPane.setCursor(Cursor.DEFAULT);
     }
 
-    private void handleConnectSelection(Place place, Circle circle) {
-        toggleSelection(place, circle);
-
-        if (selectedPlacesList.size() < 2) {
+    private void handleConnectSelection() {
+        if (selectionManager.nrOfPlacesSelected() < 2) {
             return;
         }
 
-        Place place1 = selectedPlacesList.get(0);
-        Place place2 = selectedPlacesList.get(1);
+        Place place1 = selectionManager.getFirstSelectedPlace();
+        Place place2 = selectionManager.getSecondSelectedPlace();
 
-        Optional<String> name = askForRoadName();
-        Optional<Integer> distance = askForRoadDistance();
+        Optional<RoadInfo> roadInfo = askForRoadInfo();
 
-        if (name.isEmpty() || distance.isEmpty()) {
-            resetModeAfterAction();
+        if(roadInfo.isPresent()) {
+            String roadName = roadInfo.get().name();
+            int roadDistance = roadInfo.get().distance();
+
+            try {
+                model.connectPlaces(place1, place2, roadName, roadDistance);
+                drawLine(place1, place2);
+            } catch (IllegalArgumentException e) {
+                showError(e.getMessage());
+            }finally {
+                resetModeAfterAction();
+            }
+        }
+    }
+
+    private void handleDisconnectSelection(){
+        if (selectionManager.nrOfPlacesSelected() < 2) {
             return;
         }
 
-        try {
-            model.connectPlaces(place1, place2, name.get(), distance.get());
-            drawLine(place1, place2);
-        } catch (IllegalArgumentException e) {
-            showError(e.getMessage());
+        Place place1 = selectionManager.getFirstSelectedPlace();
+        Place place2 = selectionManager.getSecondSelectedPlace();
+
+
+        ConnectionView toRemove = null;
+
+        for(ConnectionView view : connectionViews){
+            if(view.connects(place1, place2)){
+                toRemove = view;
+                break;
+            }
+        }
+
+        if(toRemove != null){
+            connectionViews.remove(toRemove);
+            mapPane.getChildren().remove(toRemove.getRoot());
+            model.disconnectPlaces(place1, place2);
         }
 
         resetModeAfterAction();
@@ -270,35 +285,61 @@ public class MapView {
         return dialog.showAndWait();
     }
 
-    private Optional<String> askForRoadName() {
-        TextInputDialog dialog = new TextInputDialog();
+    private Optional<RoadInfo> askForRoadInfo() {
+
+        Dialog<RoadInfo> dialog = new Dialog<>();
 
         dialog.setTitle("Road Info");
-        dialog.setHeaderText("Enter a name for the road");
-        dialog.setContentText("Name:");
+        dialog.setHeaderText("Enter road information");
+
+        // Input fields
+        TextField nameField = new TextField();
+        TextField distanceField = new TextField();
+
+        // Layout
+        VBox box = new VBox(
+                10,
+                new Label("Road name:"),
+                nameField,
+                new Label("Distance:"),
+                distanceField
+        );
+
+        dialog.getDialogPane().setContent(box);
+
+        // Buttons
+        ButtonType okButton = new ButtonType(
+                "OK",
+                ButtonBar.ButtonData.OK_DONE
+        );
+
+        dialog.getDialogPane().getButtonTypes().addAll(
+                okButton,
+                ButtonType.CANCEL
+        );
+
+        // Save result into RoadInfo record
+        dialog.setResultConverter(button -> {
+
+            if (button == okButton) {
+
+                try {
+                    String name = nameField.getText();
+                    int distance = Integer.parseInt(distanceField.getText());
+
+                    return new RoadInfo(name, distance);
+
+                } catch (NumberFormatException e) {
+
+                    showError("Distance must be a number.");
+                    connect.setDisable(false);
+                }
+            }
+
+            return null;
+        });
 
         return dialog.showAndWait();
-    }
-
-    private Optional<Integer> askForRoadDistance() {
-        TextInputDialog dialog = new TextInputDialog();
-
-        dialog.setTitle("Road Info");
-        dialog.setHeaderText("Enter the distance");
-        dialog.setContentText("Distance:");
-        Optional<String> result = dialog.showAndWait();
-
-        if(result.isPresent()) {
-            try {
-                int distance = Integer.parseInt(result.get());
-                return Optional.of(distance);
-            } catch(NumberFormatException e) {
-                showError("Distance must be a number.");
-                connect.setDisable(false);
-            }
-        }
-
-        return Optional.empty();
     }
 
     private void showError(String errorMessage) {
@@ -373,10 +414,20 @@ public class MapView {
     private class ConnectButtonHandler implements EventHandler<ActionEvent> {
         @Override
         public void handle(ActionEvent event) {
-            clearSelection();
+            selectionManager.clearSelection();
             currentMode = Mode.CONNECT;
             mapPane.setCursor(Cursor.CROSSHAIR);
             connect.setDisable(true);
+        }
+    }
+
+    private class DisconnectButtonHandler implements EventHandler<ActionEvent>{
+        @Override
+        public void handle(ActionEvent event) {
+            selectionManager.clearSelection();
+            currentMode = Mode.DISCONNECT;
+            mapPane.setCursor(Cursor.CROSSHAIR);
+            disconnect.setDisable(true);
         }
     }
 }

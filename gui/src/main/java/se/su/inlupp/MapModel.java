@@ -26,6 +26,15 @@ public class MapModel {
 
         graph.connect(place1,place2, pathWayName, distance);
     }
+
+    public void disconnectPlaces(Place place1, Place place2){
+        graph.disconnect(place1,place2);
+    }
+
+    public String getConnectionName(Place place1, Place place2){
+        return graph.getEdgeBetween(place1,place2).getName();
+    }
+
     //find path
 
 
