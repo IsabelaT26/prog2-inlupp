@@ -4,6 +4,7 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Cursor;
+import javafx.scene.Group;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -14,7 +15,6 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
 import javafx.scene.text.Text;
 
 import java.util.*;
@@ -33,6 +33,9 @@ public class MapView {
     private Button disconnect;
 
     private final List<ConnectionView> connectionViews = new ArrayList<>();
+
+    private final Map<Place, Group> placeViews = new HashMap<>();
+    private final Map<Place, Circle> placeCircles = new HashMap<>();
 
     private final SelectionManager selectionManager = new SelectionManager();
     private Mode currentMode = Mode.NORMAL;
@@ -84,7 +87,9 @@ public class MapView {
         disconnect.setOnAction(new DisconnectButtonHandler());
 
         findPath = new Button("Find path");
+
         removePlace = new Button("Remove Place");
+        removePlace.setOnAction(new RemoveButtonHandler());
 
         ToolBar toolBar = new ToolBar(addPlace, connect, disconnect, findPath, removePlace);
 
@@ -159,45 +164,25 @@ public class MapView {
         Circle circle = new Circle(place.getX(), place.getY(), 20);
         circle.setFill(PLACE_CIRCLE_COLOUR);
 
-        circle.setOnMousePressed(new SelectHandler(place,circle));
 
         Text text = new Text(place.getX() - 20, place.getY() - 25, place.getName());
         text.setFill(PLACE_CIRCLE_COLOUR);
 
         circle.setOnMouseDragged(new DragHandler(place, circle,text));
 
-        mapPane.getChildren().addAll(circle, text);
-    }
+        Group circleAndName = new Group(circle, text);
 
-    //-----Select Place Feature-----
+        placeViews.put(place, circleAndName);
+        placeCircles.put(place, circle);
 
-    private void handlePlaceClicked(Place place, Circle circle) {
-        switch (currentMode) {
-            case NORMAL:
-                return;
+        circleAndName.setOnMousePressed(new SelectHandler(place, circleAndName));
 
-            case REMOVE:
-                // later remove place
-                return;
-
-            case FIND_PATH:
-                // later path logic
-                return;
-
-            case CONNECT:
-                selectionManager.toggleSelection(place, circle);
-                handleConnectSelection();
-                return;
-            case DISCONNECT:
-                selectionManager.toggleSelection(place, circle);
-                handleDisconnectSelection();
-                return;
-        }
+        mapPane.getChildren().addAll(circleAndName);
     }
 
     private void drawLine(Place place1, Place place2) {
-        Circle circle1 = selectionManager.getCircle(place1);
-        Circle circle2 = selectionManager.getCircle(place2);
+        Circle circle1 = placeCircles.get(place1);
+        Circle circle2 = placeCircles.get(place2);
 
         ConnectionView connectionView = new ConnectionView(
                 place1,
@@ -213,11 +198,39 @@ public class MapView {
         mapPane.getChildren().add(1,connectionView.getRoot());
     }
 
+    //-----Select Place Feature-----
+
+    private void handlePlaceClicked(Place place, Group circleAndName) {
+        switch (currentMode) {
+            case NORMAL:
+                return;
+
+            case REMOVE:
+                selectionManager.toggleSelection(place,circleAndName);
+                handleRemoveSelection();
+                return;
+
+            case FIND_PATH:
+                // later path logic
+                return;
+
+            case CONNECT:
+                selectionManager.toggleSelection(place, circleAndName);
+                handleConnectSelection();
+                return;
+            case DISCONNECT:
+                selectionManager.toggleSelection(place, circleAndName);
+                handleDisconnectSelection();
+                return;
+        }
+    }
+
     private void resetModeAfterAction() {
         selectionManager.clearSelection();
         currentMode = Mode.NORMAL;
         connect.setDisable(false);
         disconnect.setDisable(false);
+        removePlace.setDisable(false);
         mapPane.setCursor(Cursor.DEFAULT);
     }
 
@@ -228,6 +241,14 @@ public class MapView {
 
         Place place1 = selectionManager.getFirstSelectedPlace();
         Place place2 = selectionManager.getSecondSelectedPlace();
+
+        for(ConnectionView view : connectionViews){
+            if(view.connects(place1, place2)){
+                showError(place1.getName() +" and "+ place2.getName() + " are already connected!");
+                resetModeAfterAction();
+                return;
+            }
+        }
 
         Optional<RoadInfo> roadInfo = askForRoadInfo();
 
@@ -264,10 +285,39 @@ public class MapView {
             }
         }
 
-        if(toRemove != null){
-            connectionViews.remove(toRemove);
-            mapPane.getChildren().remove(toRemove.getRoot());
-            model.disconnectPlaces(place1, place2);
+        if(toRemove == null){
+            showError(place1.getName() +" and "+ place2.getName() + " do not have a connection!");
+            resetModeAfterAction();
+            return;
+        }
+        connectionViews.remove(toRemove);
+        mapPane.getChildren().remove(toRemove.getRoot());
+        model.disconnectPlaces(place1, place2);
+
+        resetModeAfterAction();
+    }
+
+    private void handleRemoveSelection(){
+        if (selectionManager.nrOfPlacesSelected() == 1) {
+            Place place = selectionManager.getFirstSelectedPlace();
+            Group placeView = placeViews.get(place);
+
+            model.removePlace(place);
+            mapPane.getChildren().remove(placeView);
+
+            placeViews.remove(place);
+            placeCircles.remove(place);
+
+            Iterator<ConnectionView> iterator = connectionViews.iterator();
+
+            while (iterator.hasNext()) {
+                ConnectionView view = iterator.next();
+
+                if (view.comesFrom(place)) {
+                    mapPane.getChildren().remove(view.getRoot());
+                    iterator.remove();
+                }
+            }
         }
 
         resetModeAfterAction();
@@ -370,16 +420,16 @@ public class MapView {
 
     private class SelectHandler implements EventHandler<MouseEvent> {
         private final Place place;
-        private final Circle circle;
+        private final Group circleAndName;
 
-        public SelectHandler(Place place, Circle circle) {
+        public SelectHandler(Place place, Group circleAndName) {
             this.place = place;
-            this.circle = circle;
+            this.circleAndName = circleAndName;
         }
 
         @Override
         public void handle(MouseEvent event) {
-            handlePlaceClicked(place, circle);
+            handlePlaceClicked(place, circleAndName);
             event.consume();
         }
     }
@@ -428,6 +478,16 @@ public class MapView {
             currentMode = Mode.DISCONNECT;
             mapPane.setCursor(Cursor.CROSSHAIR);
             disconnect.setDisable(true);
+        }
+    }
+
+    private class RemoveButtonHandler implements EventHandler<ActionEvent>{
+        @Override
+        public void handle(ActionEvent event) {
+            selectionManager.clearSelection();
+            currentMode = Mode.REMOVE;
+            mapPane.setCursor(Cursor.CROSSHAIR);
+            removePlace.setDisable(true);
         }
     }
 }

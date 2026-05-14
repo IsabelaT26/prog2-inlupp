@@ -1,10 +1,15 @@
 package se.su.inlupp;
 
+import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
-import javafx.scene.shape.Circle;
+import javafx.scene.shape.Shape;
+import javafx.scene.text.Text;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
 
 public class SelectionManager {
 
@@ -12,23 +17,23 @@ public class SelectionManager {
     private static final Paint SELECTED_COLOUR = Color.ORANGE;
 
     private final LinkedList<Place> selectedPlaces = new LinkedList<>();
-    private final Map<Place, Circle> selectedCircles = new HashMap<>();
+    private final Map<Place, Group> selectedPlaceViews = new HashMap<>();
 
-    public void toggleSelection(Place place, Circle circle) {
-        if (selectedCircles.containsKey(place)) {
+    public void toggleSelection(Place place, Group placeView) {
+        if (selectedPlaceViews.containsKey(place)) {
             deselect(place);
             return;
         }
 
         if (selectedPlaces.size() == 2) {
             Place oldestPlace = selectedPlaces.removeFirst();
-            Circle oldestCircle = selectedCircles.remove(oldestPlace);
-            oldestCircle.setFill(NORMAL_COLOUR);
+            Group oldestView = selectedPlaceViews.remove(oldestPlace);
+            setPlaceViewColour(oldestView, NORMAL_COLOUR);
         }
 
         selectedPlaces.add(place);
-        selectedCircles.put(place, circle);
-        circle.setFill(SELECTED_COLOUR);
+        selectedPlaceViews.put(place, placeView);
+        setPlaceViewColour(placeView, SELECTED_COLOUR);
     }
 
     public int nrOfPlacesSelected() {
@@ -36,29 +41,46 @@ public class SelectionManager {
     }
 
     public Place getFirstSelectedPlace() {
-        return selectedPlaces.get(0);
+        return selectedPlaces.getFirst();
     }
 
     public Place getSecondSelectedPlace() {
         return selectedPlaces.get(1);
     }
 
-    public Circle getCircle(Place place){
-        return selectedCircles.get(place);
+    public Group getPlaceView(Place place) {
+        return selectedPlaceViews.get(place);
     }
 
     public void clearSelection() {
-        selectedCircles.values().forEach(circle -> circle.setFill(NORMAL_COLOUR));
-        selectedCircles.clear();
+        for (Group group : selectedPlaceViews.values()) {
+            setPlaceViewColour(group, NORMAL_COLOUR);
+        }
+
+        selectedPlaceViews.clear();
         selectedPlaces.clear();
     }
 
     private void deselect(Place place) {
-        Circle circle = selectedCircles.remove(place);
+        Group group = selectedPlaceViews.remove(place);
         selectedPlaces.remove(place);
 
-        if (circle != null) {
-            circle.setFill(NORMAL_COLOUR);
+        if (group != null) {
+            setPlaceViewColour(group, NORMAL_COLOUR);
+        }
+    }
+
+    private void setPlaceViewColour(Group group, Paint colour) {
+        if (group == null) {
+            return;
+        }
+
+        for (Node node : group.getChildren()) {
+            if (node instanceof Shape shape) {
+                shape.setFill(colour);
+            } else if (node instanceof Text text) {
+                text.setFill(colour);
+            }
         }
     }
 }

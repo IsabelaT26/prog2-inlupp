@@ -61,4 +61,8 @@ public class ConnectionView {
         return (place1.equals(a) && place2.equals(b))
                 || (place1.equals(b) && place2.equals(a));
     }
+
+    public boolean comesFrom(Place place){
+        return place1.equals(place) || place2.equals(place);
+    }
 }
