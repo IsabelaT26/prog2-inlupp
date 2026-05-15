@@ -21,7 +21,7 @@ import java.util.*;
 
 public class MapView {
 
-    private static final Paint PLACE_CIRCLE_COLOUR = Color.RED;
+    private static final Color PLACE_CIRCLE_COLOUR = Color.RED;
     private final MapModel model;
 
     private BorderPane root;
@@ -31,6 +31,10 @@ public class MapView {
     private Button removePlace;
     private Button findPath;
     private Button disconnect;
+    private Button clearPath;
+
+    private MenuItem dfs;
+    private MenuItem bfs;
 
     private final List<ConnectionView> connectionViews = new ArrayList<>();
 
@@ -70,8 +74,11 @@ public class MapView {
 
         Menu pathMenu = new Menu("Path");
 
-        MenuItem dfs = new MenuItem("Depth First Search");
-        MenuItem bfs = new MenuItem("Breadth First Search");
+        dfs = new MenuItem("Depth First Search");
+        dfs.setOnAction(event -> model.useDFS());
+
+        bfs = new MenuItem("Breadth First Search");
+        bfs.setOnAction(event -> model.useBFS());
 
         pathMenu.getItems().addAll(dfs, bfs);
 
@@ -87,6 +94,10 @@ public class MapView {
         disconnect.setOnAction(new DisconnectButtonHandler());
 
         findPath = new Button("Find path");
+        findPath.setOnAction(new FindPathHandler());
+
+        clearPath = new Button("Clear path");
+        clearPath.setOnAction(event -> clearPathHighlight());
 
         removePlace = new Button("Remove Place");
         removePlace.setOnAction(new RemoveButtonHandler());
@@ -170,14 +181,14 @@ public class MapView {
 
         circle.setOnMouseDragged(new DragHandler(place, circle,text));
 
-        Group circleAndName = new Group(circle, text);
+        Group placeView = new Group(circle, text);
 
-        placeViews.put(place, circleAndName);
+        placeViews.put(place, placeView);
         placeCircles.put(place, circle);
 
-        circleAndName.setOnMousePressed(new SelectHandler(place, circleAndName));
+        placeView.setOnMousePressed(new SelectHandler(place, placeView));
 
-        mapPane.getChildren().addAll(circleAndName);
+        mapPane.getChildren().addAll(placeView);
     }
 
     private void drawLine(Place place1, Place place2) {
@@ -200,26 +211,27 @@ public class MapView {
 
     //-----Select Place Feature-----
 
-    private void handlePlaceClicked(Place place, Group circleAndName) {
+    private void handlePlaceClicked(Place place, Group placeView) {
         switch (currentMode) {
             case NORMAL:
                 return;
 
             case REMOVE:
-                selectionManager.toggleSelection(place,circleAndName);
+                selectionManager.toggleSelection(place,placeView);
                 handleRemoveSelection();
                 return;
 
             case FIND_PATH:
-                // later path logic
+                selectionManager.toggleSelection(place, placeView);
+                handleFindPathSelection();
                 return;
 
             case CONNECT:
-                selectionManager.toggleSelection(place, circleAndName);
+                selectionManager.toggleSelection(place, placeView);
                 handleConnectSelection();
                 return;
             case DISCONNECT:
-                selectionManager.toggleSelection(place, circleAndName);
+                selectionManager.toggleSelection(place, placeView);
                 handleDisconnectSelection();
                 return;
         }
@@ -231,6 +243,7 @@ public class MapView {
         connect.setDisable(false);
         disconnect.setDisable(false);
         removePlace.setDisable(false);
+        findPath.setDisable(false);
         mapPane.setCursor(Cursor.DEFAULT);
     }
 
@@ -323,6 +336,52 @@ public class MapView {
         resetModeAfterAction();
     }
 
+    private void handleFindPathSelection(){
+        if (selectionManager.nrOfPlacesSelected() < 2) {
+            return;
+        }
+
+        Place start = selectionManager.getFirstSelectedPlace();
+        Place goal = selectionManager.getSecondSelectedPlace();
+
+        Path<Place> path = model.findPath(start,goal);
+        if (path == null){
+            showError("No path exists");
+            resetModeAfterAction();
+            return;
+        }
+
+        highlightPath(path);
+
+        resetModeAfterAction();
+    }
+
+    private void highlightPath(Path<Place> path) {
+        clearPathHighlight();
+
+        List<Place> nodes = path.getNodes();
+
+        for (int i = 0; i < nodes.size() - 1; i++) {
+            Place from = nodes.get(i);
+            Place to = nodes.get(i + 1);
+
+            for (ConnectionView view : connectionViews) {
+                if (view.connects(from, to)) {
+                    view.highlight(Color.ORANGE);
+                }
+            }
+        }
+
+        showInfo("Path found","Total distance: " + path.getTotalWeight());
+    }
+
+    private void clearPathHighlight() {
+        for (ConnectionView view : connectionViews) {
+            view.unhighlight(PLACE_CIRCLE_COLOUR);
+        }
+    }
+
+
     // ---------- Dialogs ----------
 
     private Optional<String> askForPlaceName() {
@@ -402,6 +461,16 @@ public class MapView {
         alert.showAndWait();
     }
 
+    private void showInfo(String title, String message){
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+
+        alert.setTitle("Info");
+        alert.setHeaderText(title);
+        alert.setContentText(message);
+
+        alert.showAndWait();
+    }
+
     // ---------- Event handlers ----------
 
     private class AddButtonHandler implements EventHandler<ActionEvent> {
@@ -420,16 +489,16 @@ public class MapView {
 
     private class SelectHandler implements EventHandler<MouseEvent> {
         private final Place place;
-        private final Group circleAndName;
+        private final Group placeView;
 
-        public SelectHandler(Place place, Group circleAndName) {
+        public SelectHandler(Place place, Group placeView) {
             this.place = place;
-            this.circleAndName = circleAndName;
+            this.placeView = placeView;
         }
 
         @Override
         public void handle(MouseEvent event) {
-            handlePlaceClicked(place, circleAndName);
+            handlePlaceClicked(place, placeView);
             event.consume();
         }
     }
@@ -488,6 +557,17 @@ public class MapView {
             currentMode = Mode.REMOVE;
             mapPane.setCursor(Cursor.CROSSHAIR);
             removePlace.setDisable(true);
+        }
+    }
+
+    private class FindPathHandler implements EventHandler<ActionEvent>{
+
+        @Override
+        public void handle(ActionEvent event) {
+            selectionManager.clearSelection();
+            currentMode = Mode.FIND_PATH;
+            mapPane.setCursor(Cursor.CROSSHAIR);
+            findPath.setDisable(true);
         }
     }
 }

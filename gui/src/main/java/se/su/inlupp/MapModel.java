@@ -3,6 +3,7 @@ package se.su.inlupp;
 public class MapModel {
 
     private final ListGraph<Place> graph = new ListGraph<>();
+    private PathFinder<Place> pathFinder = new BFSPathFinder<>();
 
     public void addPlace(Place place) {
         if (place.getName().trim().isEmpty()) {
@@ -35,10 +36,18 @@ public class MapModel {
         return graph.getEdgeBetween(place1,place2).getName();
     }
 
-    //find path
+    public void useDFS() {
+        pathFinder = new DFSPathFinder<>();
+    }
 
+    public void useBFS() {
+        pathFinder = new BFSPathFinder<>();
+    }
 
-    //switch bfs/dfs
+    public Path<Place> findPath(Place start, Place goal) {
+        return pathFinder.findPath(graph, start, goal);
+    }
+
 
     //save
 

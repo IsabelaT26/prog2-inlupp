@@ -1,6 +1,7 @@
 package se.su.inlupp;
 
 import javafx.scene.Group;
+import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
@@ -24,7 +25,7 @@ public class ConnectionView {
             Circle circle1,
             Circle circle2,
             String connectionName,
-            Paint color
+            Color color
     ) {
         this.place1 = place1;
         this.place2 = place2;
@@ -64,5 +65,15 @@ public class ConnectionView {
 
     public boolean comesFrom(Place place){
         return place1.equals(place) || place2.equals(place);
+    }
+
+    public void highlight(Color color){
+        line.setStroke(color);
+        label.setFill(color);
+    }
+
+    public void unhighlight(Color color){
+        line.setStroke(color);
+        label.setFill(color);
     }
 }
