@@ -5,8 +5,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
 
-import java.util.Objects;
-
 public class MapApplication extends Application {
 
   @Override
@@ -19,6 +17,11 @@ public class MapApplication extends Application {
     stage.setTitle("Map Navigator");
     stage.setScene(scene);
     stage.show();
+    stage.setOnCloseRequest(event -> {
+      if (!view.confirmDiscardUnsavedChanges()) {
+        event.consume();
+      }
+    });
   }
 
   public static void main(String[] args) {

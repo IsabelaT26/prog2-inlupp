@@ -13,10 +13,13 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
 
 public class MapView {
@@ -26,15 +29,24 @@ public class MapView {
 
     private BorderPane root;
     private Pane mapPane;
-    private Button addPlace;
-    private Button connect;
-    private Button removePlace;
-    private Button findPath;
-    private Button disconnect;
-    private Button clearPath;
+    private Button addPlace = new Button("Add place");
+    private Button  connect = new Button("Connect");
+    private Button removePlace = new Button("Remove Place");
+    private Button findPath = new Button("Find path");
+    private Button disconnect = new Button("Disconnect");
+    private Button clearPath = new Button("Clear path");
 
-    private MenuItem dfs;
-    private MenuItem bfs;
+    private MenuItem newItem = new MenuItem("New");
+    private MenuItem saveItem = new MenuItem("Save");
+    private MenuItem loadItem = new MenuItem("Load");
+    private MenuItem loadBackgroundItem = new MenuItem("Load background image");
+
+    private MenuItem dfs = new MenuItem("Depth First Search");;
+    private MenuItem  bfs = new MenuItem("Breadth First Search");
+
+    private ImageView imageView;
+    private String backgroundImagePath = "/background.jpg";
+    private boolean hasUnsavedChanges = false;
 
     private final List<ConnectionView> connectionViews = new ArrayList<>();
 
@@ -65,44 +77,35 @@ public class MapView {
     private VBox createTop() {
         Menu fileMenu = new Menu("File");
 
-        MenuItem newItem = new MenuItem("New");
-        MenuItem saveItem = new MenuItem("Save");
-        MenuItem loadItem = new MenuItem("Load");
-        MenuItem exitItem = new MenuItem("Exit");
+        newItem.setOnAction(event -> newMap());
+        saveItem.setOnAction(event-> saveMap());
+        loadItem.setOnAction(event -> loadMap());
+        loadBackgroundItem.setOnAction(event -> loadBackgroundImage());
 
-        fileMenu.getItems().addAll(newItem, saveItem, loadItem, exitItem);
+        fileMenu.getItems().addAll(newItem, saveItem, loadItem, loadBackgroundItem);
 
         Menu pathMenu = new Menu("Path");
 
-        dfs = new MenuItem("Depth First Search");
         dfs.setOnAction(event -> model.useDFS());
-
-        bfs = new MenuItem("Breadth First Search");
         bfs.setOnAction(event -> model.useBFS());
 
         pathMenu.getItems().addAll(dfs, bfs);
 
-        MenuBar menuBar = new MenuBar(fileMenu, new Menu("Edit"), pathMenu);
+        MenuBar menuBar = new MenuBar(fileMenu, pathMenu);
 
-        addPlace = new Button("Add place");
-        addPlace.setOnAction(new AddButtonHandler());
+        addPlace.setOnAction(event -> enterAddPlaceMode());
 
-        connect = new Button("Connect");
         connect.setOnAction(new ConnectButtonHandler());
 
-        disconnect = new Button("Disconnect");
         disconnect.setOnAction(new DisconnectButtonHandler());
 
-        findPath = new Button("Find path");
         findPath.setOnAction(new FindPathHandler());
 
-        clearPath = new Button("Clear path");
         clearPath.setOnAction(event -> clearPathHighlight());
 
-        removePlace = new Button("Remove Place");
         removePlace.setOnAction(new RemoveButtonHandler());
 
-        ToolBar toolBar = new ToolBar(addPlace, connect, disconnect, findPath, removePlace);
+        ToolBar toolBar = new ToolBar(addPlace,removePlace, connect, disconnect, findPath, clearPath);
 
         return new VBox(menuBar, toolBar);
     }
@@ -112,11 +115,11 @@ public class MapView {
 
         Image background = new Image(
                 Objects.requireNonNull(
-                        MapApplication.class.getResourceAsStream("/background.jpg")
+                        MapApplication.class.getResourceAsStream(backgroundImagePath)
                 )
         );
 
-        ImageView imageView = new ImageView(background);
+        imageView = new ImageView(background);
         imageView.setPreserveRatio(false);
 
         imageView.fitWidthProperty().bind(mapPane.widthProperty());
@@ -130,7 +133,7 @@ public class MapView {
     // ---------- Add place feature ----------
 
     private void enterAddPlaceMode() {
-        mapPane.setOnMouseClicked(new AddPlaceClickHandler());
+        mapPane.setOnMouseClicked(this::handleAddPlaceClick);
         mapPane.setCursor(Cursor.CROSSHAIR);
         addPlace.setDisable(true);
     }
@@ -189,6 +192,7 @@ public class MapView {
         placeView.setOnMousePressed(new SelectHandler(place, placeView));
 
         mapPane.getChildren().addAll(placeView);
+        hasUnsavedChanges = true;
     }
 
     private void drawLine(Place place1, Place place2) {
@@ -207,6 +211,7 @@ public class MapView {
         connectionViews.add(connectionView);
 
         mapPane.getChildren().add(1,connectionView.getRoot());
+        hasUnsavedChanges = true;
     }
 
     //-----Select Place Feature-----
@@ -233,7 +238,6 @@ public class MapView {
             case DISCONNECT:
                 selectionManager.toggleSelection(place, placeView);
                 handleDisconnectSelection();
-                return;
         }
     }
 
@@ -272,6 +276,7 @@ public class MapView {
             try {
                 model.connectPlaces(place1, place2, roadName, roadDistance);
                 drawLine(place1, place2);
+                hasUnsavedChanges = true;
             } catch (IllegalArgumentException e) {
                 showError(e.getMessage());
             }finally {
@@ -306,6 +311,7 @@ public class MapView {
         connectionViews.remove(toRemove);
         mapPane.getChildren().remove(toRemove.getRoot());
         model.disconnectPlaces(place1, place2);
+        hasUnsavedChanges = true;
 
         resetModeAfterAction();
     }
@@ -333,6 +339,7 @@ public class MapView {
             }
         }
 
+        hasUnsavedChanges = true;
         resetModeAfterAction();
     }
 
@@ -381,6 +388,160 @@ public class MapView {
         }
     }
 
+    // ---------- Save & load ----------
+
+    private void saveMap(){
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Map");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Txt Files", "*.txt")
+        );
+        File file = fileChooser.showSaveDialog(root.getScene().getWindow());
+
+        if (file == null) {
+            return;
+        }
+
+        try {
+            model.saveToFile(file, backgroundImagePath);
+            showInfo("Success!", "Your map has been saved!");
+            hasUnsavedChanges = false;
+        }catch (IOException e){
+            showError("Unable to save, try again!");
+        }
+
+    }
+
+    private void loadMap(){
+        if (!confirmDiscardUnsavedChanges()) {
+            return;
+        }
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Load map");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Txt Files", "*.txt")
+        );
+        File file = fileChooser.showOpenDialog(root.getScene().getWindow());
+
+        if (file == null) {
+            return;
+        }
+
+        try {
+            clearMapView();
+
+
+
+            setBackgroundImage(model.loadFromFile(file));
+            for (Place place : model.getPlaces()) {
+                drawPlace(place);
+            }
+            for (Place place : model.getPlaces()){
+                if(model.getConnections().containsKey(place)){
+                    drawLine(place,model.getConnections().get(place));
+                }
+            }
+            hasUnsavedChanges = false;
+        } catch (FileNotFoundException e) {
+            showError("File not found!");
+        } catch (IOException e) {
+          showError(e.getMessage());
+        }
+    }
+
+    private void loadBackgroundImage(){
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Load Background");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Image files", "*.jpg", "*.jpeg", "*.png")
+        );
+
+        File file = fileChooser.showOpenDialog(root.getScene().getWindow());
+
+
+
+        if (file == null) {
+            return;
+        }
+
+        Image background = new Image(file.toURI().toString());
+        imageView.setImage(background);
+        backgroundImagePath = file.getAbsolutePath();
+        hasUnsavedChanges = true;
+    }
+
+    private void newMap() {
+        if (!confirmDiscardUnsavedChanges()) {
+            return;
+        }
+
+        model.clear();
+        clearMapView();
+        setBackgroundImage("/background.jpg");
+
+        hasUnsavedChanges = false;
+    }
+
+    private void setBackgroundImage(String path) {
+        if (path == null || path.isBlank()) {
+            return;
+        }
+
+        try {
+            Image background;
+
+            File file = new File(path);
+
+            if (file.exists()) {
+                background = new Image(file.toURI().toString());
+            } else {
+                String resourcePath = path.startsWith("/") ? path : "/" + path;
+
+                background = new Image(
+                        Objects.requireNonNull(
+                                MapApplication.class.getResourceAsStream(resourcePath)
+                        )
+                );
+            }
+
+            imageView.setImage(background);
+            backgroundImagePath = path;
+
+        } catch (Exception e) {
+            showError("Could not load background image: " + path);
+        }
+    }
+
+    private void clearMapView() {
+        for (Group placeView : placeViews.values()) {
+            mapPane.getChildren().remove(placeView);
+        }
+
+        for (ConnectionView connectionView : connectionViews) {
+            mapPane.getChildren().remove(connectionView.getRoot());
+        }
+
+        placeViews.clear();
+        placeCircles.clear();
+        connectionViews.clear();
+        selectionManager.clearSelection();
+    }
+
+    public boolean confirmDiscardUnsavedChanges() {
+        if (!hasUnsavedChanges) {
+            return true;
+        }
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Unsaved changes");
+        alert.setHeaderText("You have unsaved changes.");
+        alert.setContentText("Do you want to continue and discard them?");
+
+        Optional<ButtonType> result = alert.showAndWait();
+
+        return result.isPresent() && result.get() == ButtonType.OK;
+    }
 
     // ---------- Dialogs ----------
 
@@ -473,20 +634,6 @@ public class MapView {
 
     // ---------- Event handlers ----------
 
-    private class AddButtonHandler implements EventHandler<ActionEvent> {
-        @Override
-        public void handle(ActionEvent actionEvent) {
-            enterAddPlaceMode();
-        }
-    }
-
-    private class AddPlaceClickHandler implements EventHandler<MouseEvent> {
-        @Override
-        public void handle(MouseEvent event) {
-            handleAddPlaceClick(event);
-        }
-    }
-
     private class SelectHandler implements EventHandler<MouseEvent> {
         private final Place place;
         private final Group placeView;
@@ -527,6 +674,7 @@ public class MapView {
             text.setX(newX - 20);
             text.setY(newY - 25);
             place.setPosition(newX, newY);
+            hasUnsavedChanges = true;
         }
     }
 
