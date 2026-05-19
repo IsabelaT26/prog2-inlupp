@@ -12,6 +12,9 @@ public class MapModel {
         if (place.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Place name cannot be empty");
         }
+        if (getPlaces().contains(place)){
+            throw new IllegalArgumentException(place.getName() + " already exist on map");
+        }
 
         graph.add(place);
     }

@@ -353,7 +353,7 @@ public class MapView {
 
         Path<Place> path = model.findPath(start,goal);
         if (path == null){
-            showError("No path exists");
+            showError("Path not found");
             resetModeAfterAction();
             return;
         }
@@ -617,7 +617,7 @@ public class MapView {
 
         alert.setTitle("Error");
         alert.setHeaderText("Something went wrong");
-        alert.setContentText(errorMessage);
+        alert.setContentText(errorMessage + "!");
 
         alert.showAndWait();
     }
