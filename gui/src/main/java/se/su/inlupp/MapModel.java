@@ -27,7 +27,7 @@ public class MapModel {
         if (pathWayName.trim().isEmpty()) {
             throw new IllegalArgumentException("Road name cannot be empty");
         }
-        if (distance < 0){
+        if (distance <= 0){
             throw new IllegalArgumentException("Distance must be greater than 0");
         }
 

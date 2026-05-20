@@ -46,6 +46,11 @@ public class MapView {
 
     private ImageView imageView;
     private String backgroundImagePath = "/background.jpg";
+    private Image originalBackgroundImage = new Image(
+            Objects.requireNonNull(
+                    MapApplication.class.getResourceAsStream("/background.jpg")
+            )
+    );
     private boolean hasUnsavedChanges = false;
 
     private final List<ConnectionView> connectionViews = new ArrayList<>();
@@ -86,8 +91,8 @@ public class MapView {
 
         Menu pathMenu = new Menu("Path");
 
-        dfs.setOnAction(event -> model.useDFS());
-        bfs.setOnAction(event -> model.useBFS());
+        dfs.setOnAction(new DFSHandler());
+        bfs.setOnAction(new BFSHandler());
 
         pathMenu.getItems().addAll(dfs, bfs);
 
@@ -113,13 +118,7 @@ public class MapView {
     private Pane createMapPane() {
         mapPane = new Pane();
 
-        Image background = new Image(
-                Objects.requireNonNull(
-                        MapApplication.class.getResourceAsStream(backgroundImagePath)
-                )
-        );
-
-        imageView = new ImageView(background);
+        imageView = new ImageView(originalBackgroundImage);
         imageView.setPreserveRatio(false);
 
         imageView.fitWidthProperty().bind(mapPane.widthProperty());
@@ -279,10 +278,9 @@ public class MapView {
                 hasUnsavedChanges = true;
             } catch (IllegalArgumentException e) {
                 showError(e.getMessage());
-            }finally {
-                resetModeAfterAction();
             }
         }
+        resetModeAfterAction();
     }
 
     private void handleDisconnectSelection(){
@@ -321,6 +319,13 @@ public class MapView {
             Place place = selectionManager.getFirstSelectedPlace();
             Group placeView = placeViews.get(place);
 
+            boolean removalApproved = showConfirmActionDialog("You are removing a place", " You want to remove this place and all its roads");
+
+            if(!removalApproved){
+                resetModeAfterAction();
+                return;
+            }
+
             model.removePlace(place);
             mapPane.getChildren().remove(placeView);
 
@@ -352,6 +357,7 @@ public class MapView {
         Place goal = selectionManager.getSecondSelectedPlace();
 
         Path<Place> path = model.findPath(start,goal);
+
         if (path == null){
             showError("Path not found");
             resetModeAfterAction();
@@ -391,6 +397,11 @@ public class MapView {
     // ---------- Save & load ----------
 
     private void saveMap(){
+        if(model.getPlaces().isEmpty()){
+            showError("There is nothing to save. Add at least one place first");
+            return;
+        }
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save Map");
         fileChooser.getExtensionFilters().add(
@@ -485,6 +496,7 @@ public class MapView {
 
     private void setBackgroundImage(String path) {
         if (path == null || path.isBlank()) {
+            imageView.setImage(originalBackgroundImage);
             return;
         }
 
@@ -509,7 +521,8 @@ public class MapView {
             backgroundImagePath = path;
 
         } catch (Exception e) {
-            showError("Could not load background image: " + path);
+            showError("Could not load the saved background image. The default background will be used instead." );
+            imageView.setImage(originalBackgroundImage);
         }
     }
 
@@ -533,14 +546,9 @@ public class MapView {
             return true;
         }
 
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Unsaved changes");
-        alert.setHeaderText("You have unsaved changes.");
-        alert.setContentText("Do you want to continue and discard them?");
+        return showConfirmActionDialog("You have unsaved changes.","Do you want to continue and discard them" );
 
-        Optional<ButtonType> result = alert.showAndWait();
 
-        return result.isPresent() && result.get() == ButtonType.OK;
     }
 
     // ---------- Dialogs ----------
@@ -601,7 +609,7 @@ public class MapView {
 
                 } catch (NumberFormatException e) {
 
-                    showError("Distance must be a number.");
+                    showError("Distance must be a number");
                     connect.setDisable(false);
                 }
             }
@@ -630,6 +638,17 @@ public class MapView {
         alert.setContentText(message);
 
         alert.showAndWait();
+    }
+
+    private boolean showConfirmActionDialog(String title, String message){
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirm");
+        alert.setHeaderText(title);
+        alert.setContentText(message + "?");
+
+        Optional<ButtonType> result = alert.showAndWait();
+
+        return result.isPresent() && result.get() == ButtonType.OK;
     }
 
     // ---------- Event handlers ----------
@@ -712,10 +731,30 @@ public class MapView {
 
         @Override
         public void handle(ActionEvent event) {
+            if(model.getConnections().isEmpty()){
+                showError("There are no roads on the map yet. Connect places before finding a path");
+                return;
+            }
             selectionManager.clearSelection();
             currentMode = Mode.FIND_PATH;
             mapPane.setCursor(Cursor.CROSSHAIR);
             findPath.setDisable(true);
+        }
+    }
+
+    private class BFSHandler implements EventHandler<ActionEvent> {
+        @Override
+        public void handle(ActionEvent event) {
+            model.useBFS();
+            showInfo("PathFinding Algorithm changed", "Pathfinding algorithm set to Breadth First Search.");
+        }
+    }
+
+    private class DFSHandler implements EventHandler<ActionEvent> {
+        @Override
+        public void handle(ActionEvent event) {
+            model.useDFS();
+            showInfo("PathFinding Algorithm changed", "Pathfinding algorithm set to Depth First Search.");
         }
     }
 }
