@@ -2,7 +2,6 @@ package se.su.inlupp;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
 import javafx.stage.Stage;
 
 public class MapApplication extends Application {
@@ -18,7 +17,7 @@ public class MapApplication extends Application {
     stage.setScene(scene);
     stage.show();
     stage.setOnCloseRequest(event -> {
-      if (!view.confirmDiscardUnsavedChanges()) {
+      if (view.confirmDiscardUnsavedChanges()) {
         event.consume();
       }
     });

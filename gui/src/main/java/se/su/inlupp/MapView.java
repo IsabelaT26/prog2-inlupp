@@ -25,26 +25,28 @@ public class MapView {
     private static final Color HIGHLIGHT_COLOUR = Color.GREEN;
     private final MapModel model;
 
+    private final MapDialog dialogs = new MapDialog();
+
     private BorderPane root;
     private Pane mapPane;
-    private Button addPlace = new Button("Add place");
-    private Button  connect = new Button("Connect");
-    private Button removePlace = new Button("Remove Place");
-    private Button findPath = new Button("Find path");
-    private Button disconnect = new Button("Disconnect");
-    private Button clearPath = new Button("Clear path");
+    private final Button addPlace = new Button("Add place");
+    private final Button  connect = new Button("Connect");
+    private final Button removePlace = new Button("Remove Place");
+    private final Button findPath = new Button("Find path");
+    private final Button disconnect = new Button("Disconnect");
+    private final Button clearPath = new Button("Clear path");
 
-    private MenuItem newItem = new MenuItem("New");
-    private MenuItem saveItem = new MenuItem("Save");
-    private MenuItem loadItem = new MenuItem("Load");
-    private MenuItem loadBackgroundItem = new MenuItem("Load background image");
+    private final MenuItem newItem = new MenuItem("New");
+    private final MenuItem saveItem = new MenuItem("Save");
+    private final MenuItem loadItem = new MenuItem("Load");
+    private final MenuItem loadBackgroundItem = new MenuItem("Load background image");
 
-    private MenuItem dfs = new MenuItem("Depth First Search");;
-    private MenuItem  bfs = new MenuItem("Breadth First Search");
+    private final MenuItem dfs = new MenuItem("Depth First Search");
+    private final MenuItem  bfs = new MenuItem("Breadth First Search");
 
     private ImageView imageView;
     private String backgroundImagePath = "/background.jpg";
-    private Image originalBackgroundImage = new Image(
+    private final Image originalBackgroundImage = new Image(
             Objects.requireNonNull(
                     MapApplication.class.getResourceAsStream("/background.jpg")
             )
@@ -144,13 +146,13 @@ public class MapView {
         double x = event.getX();
         double y = event.getY();
 
-        Optional<String> placeName = askForPlaceName();
+        Optional<String> placeName = dialogs.askForPlaceName();
 
         if (placeName.isPresent()) {
             String name = placeName.get().trim();
 
             if (name.isEmpty()) {
-                showError("Place name cannot be empty.");
+                dialogs.showError("Place name cannot be empty.");
                 resetAddPlaceMode();
                 return;
             }
@@ -161,7 +163,7 @@ public class MapView {
                 model.addPlace(newPlace);
                 drawPlace(newPlace);
             } catch (IllegalArgumentException e) {
-                showError(e.getMessage());
+                dialogs.showError(e.getMessage());
             }
         }
 
@@ -176,6 +178,7 @@ public class MapView {
         placeView.getRoot().setOnMouseDragged(new DragHandler(placeView));
 
         placeViews.put(place, placeView);
+        hasUnsavedChanges = true;
 
         mapPane.getChildren().add(placeView.getRoot());
     }
@@ -246,13 +249,13 @@ public class MapView {
 
         for(ConnectionView view : connectionViews){
             if(view.connects(place1, place2)){
-                showError(place1.getName() +" and "+ place2.getName() + " are already connected!");
+                dialogs.showError(place1.getName() +" and "+ place2.getName() + " are already connected!");
                 resetModeAfterAction();
                 return;
             }
         }
 
-        Optional<RoadInfo> roadInfo = askForRoadInfo();
+        Optional<RoadInfo> roadInfo = dialogs.askForRoadInfo();
 
         if(roadInfo.isPresent()) {
             String roadName = roadInfo.get().name();
@@ -263,7 +266,7 @@ public class MapView {
                 drawLine(place1, place2);
                 hasUnsavedChanges = true;
             } catch (IllegalArgumentException e) {
-                showError(e.getMessage());
+                dialogs.showError(e.getMessage());
             }
         }
         resetModeAfterAction();
@@ -288,7 +291,7 @@ public class MapView {
         }
 
         if(toRemove == null){
-            showError(place1.getName() +" and "+ place2.getName() + " do not have a connection!");
+            dialogs.showError(place1.getName() +" and "+ place2.getName() + " do not have a connection!");
             resetModeAfterAction();
             return;
         }
@@ -305,7 +308,7 @@ public class MapView {
             Place place = selectionManager.getFirstSelectedPlace();
             PlaceView placeView = placeViews.get(place);
 
-            boolean removalApproved = showConfirmActionDialog("You are removing a place", " You want to remove this place and all its roads");
+            boolean removalApproved = dialogs.confirmRemovePlace(place.getName());
 
             if(!removalApproved){
                 resetModeAfterAction();
@@ -344,7 +347,7 @@ public class MapView {
         Path<Place> path = model.findPath(start,goal);
 
         if (path == null){
-            showError("Path not found");
+            dialogs.showError("Path not found");
             resetModeAfterAction();
             return;
         }
@@ -379,7 +382,7 @@ public class MapView {
             }
         }
 
-        showInfo("Path found","Total distance: " + path.getTotalWeight());
+        dialogs.showInfo("Path found","Total distance: " + path.getTotalWeight());
     }
 
     private void clearPathHighlight() {
@@ -396,7 +399,7 @@ public class MapView {
 
     private void saveMap(){
         if(model.getPlaces().isEmpty()){
-            showError("There is nothing to save. Add at least one place first");
+            dialogs.showError("There is nothing to save. Add at least one place first");
             return;
         }
 
@@ -413,16 +416,16 @@ public class MapView {
 
         try {
             model.saveToFile(file, backgroundImagePath);
-            showInfo("Success!", "Your map has been saved!");
+            dialogs.showInfo("Success!", "Your map has been saved!");
             hasUnsavedChanges = false;
         }catch (IOException e){
-            showError("Unable to save, try again!");
+            dialogs.showError("Unable to save, try again!");
         }
 
     }
 
     private void loadMap(){
-        if (!confirmDiscardUnsavedChanges()) {
+        if (confirmDiscardUnsavedChanges()) {
             return;
         }
 
@@ -453,9 +456,9 @@ public class MapView {
             }
             hasUnsavedChanges = false;
         } catch (FileNotFoundException e) {
-            showError("File not found!");
+            dialogs.showError("File not found!");
         } catch (IOException e) {
-          showError(e.getMessage());
+          dialogs.showError(e.getMessage());
         }
     }
 
@@ -481,7 +484,7 @@ public class MapView {
     }
 
     private void newMap() {
-        if (!confirmDiscardUnsavedChanges()) {
+        if (confirmDiscardUnsavedChanges()) {
             return;
         }
 
@@ -519,7 +522,7 @@ public class MapView {
             backgroundImagePath = path;
 
         } catch (Exception e) {
-            showError("Could not load the saved background image. The default background will be used instead." );
+            dialogs.showError("Could not load the saved background image. The default background will be used instead." );
             imageView.setImage(originalBackgroundImage);
         }
     }
@@ -540,110 +543,10 @@ public class MapView {
 
     public boolean confirmDiscardUnsavedChanges() {
         if (!hasUnsavedChanges) {
-            return true;
+            return false;
         }
 
-        return showConfirmActionDialog("You have unsaved changes.","Do you want to continue and discard them" );
-    }
-
-    // ---------- Dialogs ----------
-
-    private Optional<String> askForPlaceName() {
-        TextInputDialog dialog = new TextInputDialog();
-
-        dialog.setTitle("Name");
-        dialog.setHeaderText("Enter a name for the place");
-        dialog.setContentText("Name:");
-
-        return dialog.showAndWait();
-    }
-
-    private Optional<RoadInfo> askForRoadInfo() {
-
-        Dialog<RoadInfo> dialog = new Dialog<>();
-
-        dialog.setTitle("Road Info");
-        dialog.setHeaderText("Enter road information");
-
-        // Input fields
-        TextField nameField = new TextField();
-        TextField distanceField = new TextField();
-
-        // Layout
-        VBox box = new VBox(
-                10,
-                new Label("Road name:"),
-                nameField,
-                new Label("Distance:"),
-                distanceField
-        );
-
-        dialog.getDialogPane().setContent(box);
-
-        // Buttons
-        ButtonType okButton = new ButtonType(
-                "OK",
-                ButtonBar.ButtonData.OK_DONE
-        );
-
-        dialog.getDialogPane().getButtonTypes().addAll(
-                okButton,
-                ButtonType.CANCEL
-        );
-
-        // Save result into RoadInfo record
-        dialog.setResultConverter(button -> {
-
-            if (button == okButton) {
-
-                try {
-                    String name = nameField.getText();
-                    int distance = Integer.parseInt(distanceField.getText());
-
-                    return new RoadInfo(name, distance);
-
-                } catch (NumberFormatException e) {
-
-                    showError("Distance must be a number");
-                    connect.setDisable(false);
-                }
-            }
-
-            return null;
-        });
-
-        return dialog.showAndWait();
-    }
-
-    private void showError(String errorMessage) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-
-        alert.setTitle("Error");
-        alert.setHeaderText("Something went wrong");
-        alert.setContentText(errorMessage + "!");
-
-        alert.showAndWait();
-    }
-
-    private void showInfo(String title, String message){
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-
-        alert.setTitle("Info");
-        alert.setHeaderText(title);
-        alert.setContentText(message);
-
-        alert.showAndWait();
-    }
-
-    private boolean showConfirmActionDialog(String title, String message){
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Confirm");
-        alert.setHeaderText(title);
-        alert.setContentText(message + "?");
-
-        Optional<ButtonType> result = alert.showAndWait();
-
-        return result.isPresent() && result.get() == ButtonType.OK;
+        return !dialogs.confirmDiscardUnsavedChanges();
     }
 
     // ---------- Event handlers ----------
@@ -719,7 +622,7 @@ public class MapView {
         @Override
         public void handle(ActionEvent event) {
             if(model.getConnections().isEmpty()){
-                showError("There are no roads on the map yet. Connect places before finding a path");
+                dialogs.showError("There are no roads on the map yet. Connect places before finding a path");
                 return;
             }
             selectionManager.clearSelection();
@@ -733,7 +636,7 @@ public class MapView {
         @Override
         public void handle(ActionEvent event) {
             model.useBFS();
-            showInfo("PathFinding Algorithm changed", "Pathfinding algorithm set to Breadth First Search.");
+            dialogs.showInfo("PathFinding Algorithm changed", "Pathfinding algorithm set to Breadth First Search.");
         }
     }
 
@@ -741,7 +644,7 @@ public class MapView {
         @Override
         public void handle(ActionEvent event) {
             model.useDFS();
-            showInfo("PathFinding Algorithm changed", "Pathfinding algorithm set to Depth First Search.");
+            dialogs.showInfo("PathFinding Algorithm changed", "Pathfinding algorithm set to Depth First Search.");
         }
     }
 }
