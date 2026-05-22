@@ -21,7 +21,7 @@ import java.util.*;
 
 public class MapView {
 
-    private static final Color PLACE_CIRCLE_COLOUR = Color.DARKBLUE;
+    private static final Color NORMAL_COLOUR = Color.DARKBLUE;
     private static final Color HIGHLIGHT_COLOUR = Color.GREEN;
     private final MapModel model;
 
@@ -173,7 +173,7 @@ public class MapView {
     // ---------- Drawing ----------
 
     private void drawPlace(Place place) {
-        PlaceView placeView = new PlaceView(place);
+        PlaceView placeView = new PlaceView(place, NORMAL_COLOUR);
         placeView.getRoot().setOnMousePressed(new SelectHandler(place, placeView));
         placeView.getRoot().setOnMouseDragged(new DragHandler(placeView));
 
@@ -193,7 +193,7 @@ public class MapView {
                 placeView1.getCircle(),
                 placeView2.getCircle(),
                 model.getConnectionName(place1, place2),
-                PLACE_CIRCLE_COLOUR
+                NORMAL_COLOUR
         );
 
         connectionViews.add(connectionView);
@@ -238,6 +238,8 @@ public class MapView {
         findPath.setDisable(false);
         mapPane.setCursor(Cursor.DEFAULT);
     }
+
+    //---------CONNNECT & DISCONNECT ----
 
     private void handleConnectSelection() {
         if (selectionManager.nrOfPlacesSelected() < 2) {
@@ -303,6 +305,8 @@ public class MapView {
         resetModeAfterAction();
     }
 
+    // ---- REMOVE ----
+
     private void handleRemoveSelection(){
         if (selectionManager.nrOfPlacesSelected() == 1) {
             Place place = selectionManager.getFirstSelectedPlace();
@@ -336,6 +340,8 @@ public class MapView {
         resetModeAfterAction();
     }
 
+    // PATH FINDING
+
     private void handleFindPathSelection(){
         if (selectionManager.nrOfPlacesSelected() < 2) {
             return;
@@ -366,7 +372,7 @@ public class MapView {
             PlaceView placeView = placeViews.get(place);
 
             if (placeView != null) {
-                placeView.setNormal();
+                placeView.highlight(HIGHLIGHT_COLOUR);
             }
         }
 
@@ -387,7 +393,7 @@ public class MapView {
 
     private void clearPathHighlight() {
         for (ConnectionView view : connectionViews) {
-            view.unhighlight(PLACE_CIRCLE_COLOUR);
+            view.unhighlight(NORMAL_COLOUR);
         }
 
         for (PlaceView placeView : placeViews.values()) {

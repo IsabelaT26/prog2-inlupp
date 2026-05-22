@@ -2,20 +2,14 @@ package se.su.inlupp;
 
 
 public class Place {
-    private String imagePath;
     private String name;
     private double x;
     private double y;
 
-    public Place(String name, double x, double y){
-        this(name, x, y, null);
-    }
-
-    public Place(String name, double x, double y, String imagePath) {
+    public Place(String name, double x, double y) {
         this.name = name;
         this.x = x;
         this.y = y;
-        this.imagePath = imagePath;
     }
 
     public String getName() {

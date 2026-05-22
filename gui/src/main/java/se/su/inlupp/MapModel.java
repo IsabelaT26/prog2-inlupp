@@ -146,7 +146,7 @@ public class MapModel {
                 double x = Double.parseDouble(placeParts[1]);
                 double y = Double.parseDouble(placeParts[2]);
 
-                Place place = new Place(name, x, y);
+                Place place =  new Place(name, x , y);
                 loadedPlaces.put(name,place);
                 addPlace(place);
             }

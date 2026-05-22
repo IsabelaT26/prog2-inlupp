@@ -11,7 +11,7 @@ public class PlaceView {
     private static final double RADIUS = 20;
     private static final double LABEL_X_OFFSET = -20;
     private static final double LABEL_Y_OFFSET = -25;
-    private static final Paint NORMAL_COLOUR = Color.DARKBLUE;
+    private Color normalColor;
 
     private final Place place;
     private final Circle circle;
@@ -20,14 +20,15 @@ public class PlaceView {
 
 
 
-    public PlaceView(Place place) {
+    public PlaceView(Place place, Color normalColor) {
         this.place = place;
+        this.normalColor = normalColor;
 
         circle = new Circle(place.getX(), place.getY(), RADIUS);
-        circle.setFill(NORMAL_COLOUR);
+        circle.setFill(normalColor);
 
         label = new Text(place.getX() + LABEL_X_OFFSET, place.getY() + LABEL_Y_OFFSET, place.getName());
-        label.setFill(NORMAL_COLOUR);
+        label.setFill(normalColor);
 
         root = new Group(circle, label);
     }
@@ -64,7 +65,7 @@ public class PlaceView {
     }
 
     public void setNormal() {
-        setColour(NORMAL_COLOUR);
+        setColour(normalColor);
     }
 
     public void setSelected(Paint selectedColour) {
