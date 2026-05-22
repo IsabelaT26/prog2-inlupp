@@ -4,7 +4,6 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Cursor;
-import javafx.scene.Group;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -13,8 +12,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 
 import java.io.File;
@@ -24,7 +21,8 @@ import java.util.*;
 
 public class MapView {
 
-    private static final Color PLACE_CIRCLE_COLOUR = Color.RED;
+    private static final Color PLACE_CIRCLE_COLOUR = Color.DARKBLUE;
+    private static final Color HIGHLIGHT_COLOUR = Color.GREEN;
     private final MapModel model;
 
     private BorderPane root;
@@ -55,8 +53,7 @@ public class MapView {
 
     private final List<ConnectionView> connectionViews = new ArrayList<>();
 
-    private final Map<Place, Group> placeViews = new HashMap<>();
-    private final Map<Place, Circle> placeCircles = new HashMap<>();
+    private final Map<Place, PlaceView> placeViews = new HashMap<>();
 
     private final SelectionManager selectionManager = new SelectionManager();
     private Mode currentMode = Mode.NORMAL;
@@ -174,35 +171,24 @@ public class MapView {
     // ---------- Drawing ----------
 
     private void drawPlace(Place place) {
-        Circle circle = new Circle(place.getX(), place.getY(), 20);
-        circle.setFill(PLACE_CIRCLE_COLOUR);
-
-
-        Text text = new Text(place.getX() - 20, place.getY() - 25, place.getName());
-        text.setFill(PLACE_CIRCLE_COLOUR);
-
-        circle.setOnMouseDragged(new DragHandler(place, circle,text));
-
-        Group placeView = new Group(circle, text);
+        PlaceView placeView = new PlaceView(place);
+        placeView.getRoot().setOnMousePressed(new SelectHandler(place, placeView));
+        placeView.getRoot().setOnMouseDragged(new DragHandler(placeView));
 
         placeViews.put(place, placeView);
-        placeCircles.put(place, circle);
 
-        placeView.setOnMousePressed(new SelectHandler(place, placeView));
-
-        mapPane.getChildren().addAll(placeView);
-        hasUnsavedChanges = true;
+        mapPane.getChildren().add(placeView.getRoot());
     }
 
     private void drawLine(Place place1, Place place2) {
-        Circle circle1 = placeCircles.get(place1);
-        Circle circle2 = placeCircles.get(place2);
+        PlaceView placeView1 = placeViews.get(place1);
+        PlaceView placeView2 = placeViews.get(place2);
 
         ConnectionView connectionView = new ConnectionView(
                 place1,
                 place2,
-                circle1,
-                circle2,
+                placeView1.getCircle(),
+                placeView2.getCircle(),
                 model.getConnectionName(place1, place2),
                 PLACE_CIRCLE_COLOUR
         );
@@ -215,7 +201,7 @@ public class MapView {
 
     //-----Select Place Feature-----
 
-    private void handlePlaceClicked(Place place, Group placeView) {
+    private void handlePlaceClicked(Place place, PlaceView placeView) {
         switch (currentMode) {
             case NORMAL:
                 return;
@@ -317,7 +303,7 @@ public class MapView {
     private void handleRemoveSelection(){
         if (selectionManager.nrOfPlacesSelected() == 1) {
             Place place = selectionManager.getFirstSelectedPlace();
-            Group placeView = placeViews.get(place);
+            PlaceView placeView = placeViews.get(place);
 
             boolean removalApproved = showConfirmActionDialog("You are removing a place", " You want to remove this place and all its roads");
 
@@ -327,10 +313,9 @@ public class MapView {
             }
 
             model.removePlace(place);
-            mapPane.getChildren().remove(placeView);
+            mapPane.getChildren().remove(placeView.getRoot());
 
             placeViews.remove(place);
-            placeCircles.remove(place);
 
             Iterator<ConnectionView> iterator = connectionViews.iterator();
 
@@ -364,23 +349,32 @@ public class MapView {
             return;
         }
 
-        highlightPath(path);
+
 
         resetModeAfterAction();
+        highlightPath(path);
     }
 
     private void highlightPath(Path<Place> path) {
         clearPathHighlight();
 
         List<Place> nodes = path.getNodes();
+        for (Place place : nodes) {
+            PlaceView placeView = placeViews.get(place);
+
+            if (placeView != null) {
+                placeView.setNormal();
+            }
+        }
 
         for (int i = 0; i < nodes.size() - 1; i++) {
             Place from = nodes.get(i);
             Place to = nodes.get(i + 1);
 
+
             for (ConnectionView view : connectionViews) {
                 if (view.connects(from, to)) {
-                    view.highlight(Color.ORANGE);
+                    view.highlight(HIGHLIGHT_COLOUR);
                 }
             }
         }
@@ -391,6 +385,10 @@ public class MapView {
     private void clearPathHighlight() {
         for (ConnectionView view : connectionViews) {
             view.unhighlight(PLACE_CIRCLE_COLOUR);
+        }
+
+        for (PlaceView placeView : placeViews.values()) {
+            placeView.setNormal();
         }
     }
 
@@ -527,8 +525,8 @@ public class MapView {
     }
 
     private void clearMapView() {
-        for (Group placeView : placeViews.values()) {
-            mapPane.getChildren().remove(placeView);
+        for (PlaceView placeView : placeViews.values()) {
+            mapPane.getChildren().remove(placeView.getRoot());
         }
 
         for (ConnectionView connectionView : connectionViews) {
@@ -536,7 +534,6 @@ public class MapView {
         }
 
         placeViews.clear();
-        placeCircles.clear();
         connectionViews.clear();
         selectionManager.clearSelection();
     }
@@ -547,8 +544,6 @@ public class MapView {
         }
 
         return showConfirmActionDialog("You have unsaved changes.","Do you want to continue and discard them" );
-
-
     }
 
     // ---------- Dialogs ----------
@@ -655,9 +650,9 @@ public class MapView {
 
     private class SelectHandler implements EventHandler<MouseEvent> {
         private final Place place;
-        private final Group placeView;
+        private final PlaceView placeView;
 
-        public SelectHandler(Place place, Group placeView) {
+        public SelectHandler(Place place, PlaceView placeView) {
             this.place = place;
             this.placeView = placeView;
         }
@@ -671,29 +666,21 @@ public class MapView {
 
     private class DragHandler implements EventHandler<MouseEvent> {
 
-        private Place place;
-        private Circle circle;
-        private Text text;
+        private final PlaceView placeView;
 
-        public DragHandler(Place place, Circle circle, Text text){
-            this.place = place;
-            this.circle = circle;
-            this.text = text;
+        public DragHandler(PlaceView placeView) {
+            this.placeView = placeView;
         }
 
         @Override
         public void handle(MouseEvent event) {
             Point2D point = mapPane.sceneToLocal(event.getSceneX(), event.getSceneY());
 
-            double newX = point.getX();
-            double newY = point.getY();
+            placeView.moveTo(point.getX(), point.getY());
 
-            circle.setCenterX(newX);
-            circle.setCenterY(newY);
-            text.setX(newX - 20);
-            text.setY(newY - 25);
-            place.setPosition(newX, newY);
             hasUnsavedChanges = true;
+
+            event.consume();
         }
     }
 

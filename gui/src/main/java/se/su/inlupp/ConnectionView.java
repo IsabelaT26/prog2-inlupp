@@ -70,6 +70,8 @@ public class ConnectionView {
     public void highlight(Color color){
         line.setStroke(color);
         label.setFill(color);
+        circle1.setFill(color);
+        circle2.setFill(color);
     }
 
     public void unhighlight(Color color){
