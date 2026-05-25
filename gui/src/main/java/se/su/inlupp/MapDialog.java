@@ -5,7 +5,7 @@ import javafx.scene.layout.VBox;
 
 import java.util.Optional;
 
-public class MapDialog{
+public class MapDialog {
 
     public Optional<String> askForPlaceName() {
         TextInputDialog dialog = new TextInputDialog();

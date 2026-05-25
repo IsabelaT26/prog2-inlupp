@@ -16,11 +16,11 @@ public class Place {
         return this.name;
     }
 
-    public double getY(){
+    public double getY() {
         return y;
     }
 
-    public double getX(){
+    public double getX() {
         return x;
     }
 
@@ -31,7 +31,7 @@ public class Place {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof  Place place) {
+        if (obj instanceof Place place) {
             return name.equals(place.name);
         }
         return false;

@@ -8,7 +8,7 @@ public class GraphPath<T> implements Path<T> {
     private final T startNode;
 
     public GraphPath(T startNode, List<Edge<T>> edges) {
-        this.edges = edges;
+        this.edges = List.copyOf(edges);
         this.startNode = startNode;
     }
 
@@ -36,7 +36,7 @@ public class GraphPath<T> implements Path<T> {
 
     @Override
     public List<Edge<T>> getEdges() {
-        return Collections.unmodifiableList(edges);
+        return edges;
     }
 
     @Override

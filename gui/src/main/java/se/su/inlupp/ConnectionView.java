@@ -2,8 +2,6 @@ package se.su.inlupp;
 
 import javafx.scene.Group;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.text.Text;
 
@@ -22,8 +20,8 @@ public class ConnectionView {
             String connectionName,
             Color color
     ) {
-       this.placeView1 = placeView1;
-       this.placeView2 = placeView2;
+        this.placeView1 = placeView1;
+        this.placeView2 = placeView2;
 
         line = new Line();
         line.startXProperty().bind(placeView1.getCircle().centerXProperty());
@@ -58,18 +56,18 @@ public class ConnectionView {
                 || (place1.equals(b) && place2.equals(a));
     }
 
-    public boolean comesFrom(Place place){
+    public boolean comesFrom(Place place) {
         return placeView1.getPlace().equals(place) || placeView2.getPlace().equals(place);
     }
 
-    public void highlight(Color color){
+    public void highlight(Color color) {
         line.setStroke(color);
         label.setFill(color);
         placeView1.setColour(color);
         placeView2.setColour(color);
     }
 
-    public void unhighlight(Color color){
+    public void unhighlight(Color color) {
         line.setStroke(color);
         label.setFill(color);
     }

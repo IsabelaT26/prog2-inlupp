@@ -19,7 +19,6 @@ public class PlaceView {
     private final Group root;
 
 
-
     public PlaceView(Place place, Color normalColor) {
         this.place = place;
         this.normalColor = normalColor;

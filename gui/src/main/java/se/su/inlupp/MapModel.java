@@ -12,34 +12,46 @@ public class MapModel {
         if (place.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Place name cannot be empty");
         }
-        if (getPlaces().contains(place)){
+        if (place.getName().contains(",")) {
+            throw new IllegalArgumentException("Name cannot contain commas.");
+        }
+
+        if (getPlaces().contains(place)) {
             throw new IllegalArgumentException(place.getName() + " already exist on map");
         }
 
         graph.add(place);
     }
 
-    public void removePlace(Place place){
+    public void removePlace(Place place) {
         graph.remove(place);
     }
 
-    public void connectPlaces(Place place1, Place place2, String pathWayName, int distance){
+    public void connectPlaces(Place place1, Place place2, String pathWayName, int distance) {
+        if (place1.equals(place2)) {
+            throw new IllegalArgumentException("A place cannot connect to itself.");
+        }
+
         if (pathWayName.trim().isEmpty()) {
             throw new IllegalArgumentException("Road name cannot be empty");
         }
-        if (distance <= 0){
+
+        if (pathWayName.contains(",")) {
+            throw new IllegalArgumentException("Name cannot contain commas.");
+        }
+        if (distance <= 0) {
             throw new IllegalArgumentException("Distance must be greater than 0");
         }
 
-        graph.connect(place1,place2, pathWayName, distance);
+        graph.connect(place1, place2, pathWayName, distance);
     }
 
-    public void disconnectPlaces(Place place1, Place place2){
-        graph.disconnect(place1,place2);
+    public void disconnectPlaces(Place place1, Place place2) {
+        graph.disconnect(place1, place2);
     }
 
-    public String getConnectionName(Place place1, Place place2){
-        return graph.getEdgeBetween(place1,place2).getName();
+    public String getConnectionName(Place place1, Place place2) {
+        return graph.getEdgeBetween(place1, place2).getName();
     }
 
     public void useDFS() {
@@ -120,22 +132,22 @@ public class MapModel {
                 continue;
             }
 
-            if(line.equals("BACKGROUND")) {
+            if (line.equals("BACKGROUND")) {
                 backgroundImagePath = reader.readLine();
                 continue;
             }
 
-            if(line.equals("PLACES")){
+            if (line.equals("PLACES")) {
                 readingPlaces = true;
                 readingConnections = false;
                 continue;
             }
-            if(line.equals("CONNECTIONS")){
+            if (line.equals("CONNECTIONS")) {
                 readingPlaces = false;
                 readingConnections = true;
                 continue;
             }
-            if(readingPlaces){
+            if (readingPlaces) {
                 String[] placeParts = line.split(",");
 
                 if (placeParts.length != 3) {
@@ -146,11 +158,11 @@ public class MapModel {
                 double x = Double.parseDouble(placeParts[1]);
                 double y = Double.parseDouble(placeParts[2]);
 
-                Place place =  new Place(name, x , y);
-                loadedPlaces.put(name,place);
+                Place place = new Place(name, x, y);
+                loadedPlaces.put(name, place);
                 addPlace(place);
             }
-            if(readingConnections){
+            if (readingConnections) {
                 String[] connectionParts = line.split(",");
 
                 if (connectionParts.length != 4) {
@@ -169,7 +181,7 @@ public class MapModel {
                     throw new IOException("Connection refers to unknown place: " + line);
                 }
 
-                connectPlaces(placeFrom,placeTo, name, distance);
+                connectPlaces(placeFrom, placeTo, name, distance);
             }
         }
         reader.close();
@@ -178,20 +190,8 @@ public class MapModel {
 
     //Other useful methods
 
-    public Set<Place> getPlaces(){
+    public Set<Place> getPlaces() {
         return graph.getNodes();
-    }
-
-    public Map<Place, Place> getConnections(){
-        Map<Place,Place> connections = new HashMap<>();
-        for(Place place : getPlaces()){
-            Collection<Edge<Place>> edges = graph.getEdgesFrom(place);
-            for(Edge<Place> edge : edges){
-                Place neighbor = edge.getDestination();
-                connections.put(place,neighbor);
-            }
-        }
-        return connections;
     }
 
     public List<RoadInfo> getRoads() {
@@ -201,7 +201,7 @@ public class MapModel {
             for (Edge<Place> edge : graph.getEdgesFrom(from)) {
                 Place to = edge.getDestination();
 
-                if (from.getName().compareTo(to.getName()) < 0) {
+                if (from.getName().compareTo(to.getName()) < 0) { //what guarantees the same road doesn't appear twice
                     roads.add(new RoadInfo(
                             from,
                             to,
@@ -215,7 +215,7 @@ public class MapModel {
         return roads;
     }
 
-    public void clear(){
+    public void clear() {
         graph = new ListGraph<>();
     }
 
