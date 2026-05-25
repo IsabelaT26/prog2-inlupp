@@ -1,3 +1,8 @@
 package se.su.inlupp;
 
-public record RoadInfo(String name, int distance) { }
+public record RoadInfo(
+        Place from,
+        Place to,
+        String name,
+        int distance
+) {}

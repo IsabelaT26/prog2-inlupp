@@ -17,7 +17,7 @@ public class MapDialog{
         return dialog.showAndWait();
     }
 
-    public Optional<RoadInfo> askForRoadInfo() {
+    public Optional<RoadInfo> askForRoadInfo(Place from, Place to) {
         Dialog<RoadInfo> dialog = new Dialog<>();
 
         dialog.setTitle("Road Info");
@@ -63,7 +63,7 @@ public class MapDialog{
                         return null;
                     }
 
-                    return new RoadInfo(name, distance);
+                    return new RoadInfo(from, to, name, distance);
 
                 } catch (NumberFormatException e) {
                     showError("Distance must be a number.");

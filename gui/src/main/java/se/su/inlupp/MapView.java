@@ -188,10 +188,8 @@ public class MapView {
         PlaceView placeView2 = placeViews.get(place2);
 
         ConnectionView connectionView = new ConnectionView(
-                place1,
-                place2,
-                placeView1.getCircle(),
-                placeView2.getCircle(),
+                placeView1,
+                placeView2,
                 model.getConnectionName(place1, place2),
                 NORMAL_COLOUR
         );
@@ -257,7 +255,7 @@ public class MapView {
             }
         }
 
-        Optional<RoadInfo> roadInfo = dialogs.askForRoadInfo();
+        Optional<RoadInfo> roadInfo = dialogs.askForRoadInfo(place1, place2);
 
         if(roadInfo.isPresent()) {
             String roadName = roadInfo.get().name();
@@ -455,10 +453,17 @@ public class MapView {
             for (Place place : model.getPlaces()) {
                 drawPlace(place);
             }
-            for (Place place : model.getPlaces()){
-                if(model.getConnections().containsKey(place)){
-                    drawLine(place,model.getConnections().get(place));
-                }
+
+            for (RoadInfo road : model.getRoads()) {
+                ConnectionView connectionView = new ConnectionView(
+                        placeViews.get(road.from()),
+                        placeViews.get(road.to()),
+                        road.name(),
+                        NORMAL_COLOUR
+                );
+
+                connectionViews.add(connectionView);
+                mapPane.getChildren().add(connectionView.getRoot());
             }
             hasUnsavedChanges = false;
         } catch (FileNotFoundException e) {
@@ -627,7 +632,7 @@ public class MapView {
 
         @Override
         public void handle(ActionEvent event) {
-            if(model.getConnections().isEmpty()){
+            if(model.getRoads().isEmpty()){
                 dialogs.showError("There are no roads on the map yet. Connect places before finding a path");
                 return;
             }
