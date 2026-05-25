@@ -116,76 +116,96 @@ public class MapModel {
     public String loadFromFile(File file) throws IOException {
         graph = new ListGraph<>();
 
-        BufferedReader reader = new BufferedReader(new FileReader(file));
-
-        String line;
         String backgroundImagePath = "";
 
-        boolean readingPlaces = false;
-        boolean readingConnections = false;
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            boolean readingPlaces = false;
+            boolean readingConnections = false;
 
-        Map<String, Place> loadedPlaces = new HashMap<>();
-
-
-        while ((line = reader.readLine()) != null) {
-            if (line.isBlank()) {
-                continue;
-            }
-
-            if (line.equals("BACKGROUND")) {
-                backgroundImagePath = reader.readLine();
-                continue;
-            }
-
-            if (line.equals("PLACES")) {
-                readingPlaces = true;
-                readingConnections = false;
-                continue;
-            }
-            if (line.equals("CONNECTIONS")) {
-                readingPlaces = false;
-                readingConnections = true;
-                continue;
-            }
-            if (readingPlaces) {
-                String[] placeParts = line.split(",");
-
-                if (placeParts.length != 3) {
-                    throw new IOException("Invalid place line: " + line);
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank()) {
+                    continue;
                 }
 
-                String name = placeParts[0];
-                double x = Double.parseDouble(placeParts[1]);
-                double y = Double.parseDouble(placeParts[2]);
-
-                Place place = new Place(name, x, y);
-                loadedPlaces.put(name, place);
-                addPlace(place);
-            }
-            if (readingConnections) {
-                String[] connectionParts = line.split(",");
-
-                if (connectionParts.length != 4) {
-                    throw new IOException("Invalid connection line: " + line);
+                if (line.equals("BACKGROUND")) {
+                    backgroundImagePath = reader.readLine();
+                    continue;
                 }
 
-                String from = connectionParts[0];
-                String to = connectionParts[1];
-                String name = connectionParts[2];
-                int distance = Integer.parseInt(connectionParts[3]);
-
-                Place placeFrom = loadedPlaces.get(from);
-                Place placeTo = loadedPlaces.get(to);
-
-                if (placeFrom == null || placeTo == null) {
-                    throw new IOException("Connection refers to unknown place: " + line);
+                if (line.equals("PLACES")) {
+                    readingPlaces = true;
+                    readingConnections = false;
+                    continue;
                 }
 
-                connectPlaces(placeFrom, placeTo, name, distance);
+                if (line.equals("CONNECTIONS")) {
+                    readingPlaces = false;
+                    readingConnections = true;
+                    continue;
+                }
+
+                if (readingPlaces) {
+                    readPlace(line);
+                } else if (readingConnections) {
+                    readConnection(line);
+                }
             }
         }
-        reader.close();
+
         return backgroundImagePath;
+    }
+
+    private void readPlace(String line) throws IOException {
+        String[] placeParts = line.split(",");
+
+        if (placeParts.length != 3) {
+            throw new IOException("Invalid place line: " + line);
+        }
+
+        try {
+            String name = placeParts[0];
+            double x = Double.parseDouble(placeParts[1]);
+            double y = Double.parseDouble(placeParts[2]);
+
+            Place place = new Place(name, x, y);
+            addPlace(place);
+        } catch (NumberFormatException e) {
+            throw new IOException("Invalid coordinates in place line: " + line);
+        }
+    }
+
+    private void readConnection(String line) throws IOException {
+        String[] connectionParts = line.split(",");
+
+        if (connectionParts.length != 4) {
+            throw new IOException("Invalid connection line: " + line);
+        }
+
+        try {
+            Place placeFrom = findPlaceByName(connectionParts[0]);
+            Place placeTo = findPlaceByName(connectionParts[1]);
+            String name = connectionParts[2];
+            int distance = Integer.parseInt(connectionParts[3]);
+
+            if (placeFrom == null || placeTo == null) {
+                throw new IOException("Connection refers to unknown place: " + line);
+            }
+
+            connectPlaces(placeFrom, placeTo, name, distance);
+        }catch(NumberFormatException e){
+            throw new IOException("Invalid distance in connection line " + line);
+        }
+    }
+
+    private Place findPlaceByName(String name) {
+        for (Place place : graph.getNodes()) {
+            if (place.getName().equals(name)) {
+                return place;
+            }
+        }
+
+        return null;
     }
 
     //Other useful methods

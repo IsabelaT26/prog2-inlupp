@@ -21,14 +21,25 @@ import java.util.*;
 
 public class MapView {
 
+    // Constants
+
     private static final Color NORMAL_COLOUR = Color.DARKBLUE;
     private static final Color HIGHLIGHT_COLOUR = Color.GREEN;
-    private final MapModel model;
 
+    // Model and helpers
+
+    private final MapModel model;
     private final MapDialog dialogs = new MapDialog();
+    private final SelectionManager selectionManager = new SelectionManager();
+
+    // JavaFX layout fields
 
     private BorderPane root;
     private Pane mapPane;
+    private ImageView imageView;
+
+    // Buttons and menu items
+
     private final Button addPlace = new Button("Add place");
     private final Button connect = new Button("Connect");
     private final Button removePlace = new Button("Remove Place");
@@ -44,24 +55,28 @@ public class MapView {
     private final MenuItem dfs = new MenuItem("Depth First Search");
     private final MenuItem bfs = new MenuItem("Breadth First Search");
 
-    private ImageView imageView;
+    // View state
+
     private String backgroundImagePath = "/background.jpg";
+
     private final Image originalBackgroundImage = new Image(
             Objects.requireNonNull(
                     MapApplication.class.getResourceAsStream("/background.jpg")
             )
     );
+
     private boolean hasUnsavedChanges = false;
 
     private final List<ConnectionView> connectionViews = new ArrayList<>();
-
     private final Map<Place, PlaceView> placeViews = new HashMap<>();
 
-    private final SelectionManager selectionManager = new SelectionManager();
     private Mode currentMode = Mode.NORMAL;
+
+    // Constructor and public methods
 
     public MapView(MapModel model) {
         this.model = model;
+
         createLayout();
     }
 
@@ -69,7 +84,15 @@ public class MapView {
         return root;
     }
 
-    // ---------- Layout ----------
+    public boolean confirmDiscardUnsavedChanges() {
+        if (!hasUnsavedChanges) {
+            return false;
+        }
+
+        return !dialogs.confirmDiscardUnsavedChanges();
+    }
+
+    // Layout creation
 
     private void createLayout() {
         root = new BorderPane();
@@ -100,13 +123,9 @@ public class MapView {
         addPlace.setOnAction(event -> enterAddPlaceMode());
 
         connect.setOnAction(new ConnectButtonHandler());
-
         disconnect.setOnAction(new DisconnectButtonHandler());
-
         findPath.setOnAction(new FindPathHandler());
-
         clearPath.setOnAction(event -> clearPathHighlight());
-
         removePlace.setOnAction(new RemoveButtonHandler());
 
         ToolBar toolBar = new ToolBar(addPlace, removePlace, connect, disconnect, findPath, clearPath);
@@ -128,18 +147,112 @@ public class MapView {
         return mapPane;
     }
 
-    // ---------- Add place feature ----------
+    // Menu/button actions
+
+    private void newMap() {
+        if (confirmDiscardUnsavedChanges()) {
+            return;
+        }
+
+        model.clear();
+        clearMapView();
+        setBackgroundImage("/background.jpg");
+
+        hasUnsavedChanges = false;
+    }
+
+    private void saveMap() {
+        if (model.getPlaces().isEmpty()) {
+            dialogs.showError("There is nothing to save. Add at least one place first");
+            return;
+        }
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Map");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Txt Files", "*.txt")
+        );
+
+        File file = fileChooser.showSaveDialog(root.getScene().getWindow());
+
+        if (file == null) {
+            return;
+        }
+
+        try {
+            model.saveToFile(file, backgroundImagePath);
+            dialogs.showInfo("Success!", "Your map has been saved!");
+            hasUnsavedChanges = false;
+        } catch (IOException e) {
+            dialogs.showError("Unable to save, try again!");
+        }
+    }
+
+    private void loadMap() {
+        if (confirmDiscardUnsavedChanges()) {
+            return;
+        }
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Load map");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Txt Files", "*.txt")
+        );
+
+        File file = fileChooser.showOpenDialog(root.getScene().getWindow());
+
+        if (file == null) {
+            return;
+        }
+
+        try {
+            clearMapView();
+
+            setBackgroundImage(model.loadFromFile(file));
+
+            for (Place place : model.getPlaces()) {
+                drawPlace(place);
+            }
+
+            for (RoadInfo road : model.getRoads()) {
+                Place place1 = placeViews.get(road.from()).getPlace();
+                Place place2 = placeViews.get(road.to()).getPlace();
+                drawLine(place1, place2);
+            }
+
+            hasUnsavedChanges = false;
+        } catch (FileNotFoundException e) {
+            dialogs.showError("File not found!");
+        } catch (IOException e) {
+            dialogs.showError(e.getMessage());
+        }
+    }
+
+    private void loadBackgroundImage() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Load Background");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Image files", "*.jpg", "*.jpeg", "*.png")
+        );
+
+        File file = fileChooser.showOpenDialog(root.getScene().getWindow());
+
+        if (file == null) {
+            return;
+        }
+
+        Image background = new Image(file.toURI().toString());
+        imageView.setImage(background);
+        backgroundImagePath = file.getAbsolutePath();
+        hasUnsavedChanges = true;
+    }
+
+    // Add place
 
     private void enterAddPlaceMode() {
         mapPane.setOnMouseClicked(this::handleAddPlaceClick);
         mapPane.setCursor(Cursor.CROSSHAIR);
         addPlace.setDisable(true);
-    }
-
-    private void resetAddPlaceMode() {
-        mapPane.setCursor(Cursor.DEFAULT);
-        addPlace.setDisable(false);
-        mapPane.setOnMouseClicked(null);
     }
 
     private void handleAddPlaceClick(MouseEvent event) {
@@ -170,37 +283,7 @@ public class MapView {
         resetAddPlaceMode();
     }
 
-    // ---------- Drawing ----------
-
-    private void drawPlace(Place place) {
-        PlaceView placeView = new PlaceView(place, NORMAL_COLOUR);
-        placeView.getRoot().setOnMousePressed(new SelectHandler(place, placeView));
-        placeView.getRoot().setOnMouseDragged(new DragHandler(placeView));
-
-        placeViews.put(place, placeView);
-        hasUnsavedChanges = true;
-
-        mapPane.getChildren().add(placeView.getRoot());
-    }
-
-    private void drawLine(Place place1, Place place2) {
-        PlaceView placeView1 = placeViews.get(place1);
-        PlaceView placeView2 = placeViews.get(place2);
-
-        ConnectionView connectionView = new ConnectionView(
-                placeView1,
-                placeView2,
-                model.getConnectionName(place1, place2),
-                NORMAL_COLOUR
-        );
-
-        connectionViews.add(connectionView);
-
-        mapPane.getChildren().add(1, connectionView.getRoot());
-        hasUnsavedChanges = true;
-    }
-
-    //-----Select Place Feature-----
+    // Selection and mode handling
 
     private void handlePlaceClicked(Place place, PlaceView placeView) {
         switch (currentMode) {
@@ -221,23 +304,32 @@ public class MapView {
                 selectionManager.toggleSelection(place, placeView);
                 handleConnectSelection();
                 return;
+
             case DISCONNECT:
                 selectionManager.toggleSelection(place, placeView);
                 handleDisconnectSelection();
         }
     }
 
+    private void resetAddPlaceMode() {
+        mapPane.setCursor(Cursor.DEFAULT);
+        addPlace.setDisable(false);
+        mapPane.setOnMouseClicked(null);
+    }
+
     private void resetModeAfterAction() {
         selectionManager.clearSelection();
         currentMode = Mode.NORMAL;
+
         connect.setDisable(false);
         disconnect.setDisable(false);
         removePlace.setDisable(false);
         findPath.setDisable(false);
+
         mapPane.setCursor(Cursor.DEFAULT);
     }
 
-    //---------CONNNECT & DISCONNECT ----
+    // Connect/disconnect
 
     private void handleConnectSelection() {
         if (selectionManager.nrOfPlacesSelected() < 2) {
@@ -269,6 +361,7 @@ public class MapView {
                 dialogs.showError(e.getMessage());
             }
         }
+
         resetModeAfterAction();
     }
 
@@ -279,7 +372,6 @@ public class MapView {
 
         Place place1 = selectionManager.getFirstSelectedPlace();
         Place place2 = selectionManager.getSecondSelectedPlace();
-
 
         ConnectionView toRemove = null;
 
@@ -295,15 +387,18 @@ public class MapView {
             resetModeAfterAction();
             return;
         }
+
         connectionViews.remove(toRemove);
         mapPane.getChildren().remove(toRemove.getRoot());
+
         model.disconnectPlaces(place1, place2);
+
         hasUnsavedChanges = true;
 
         resetModeAfterAction();
     }
 
-    // ---- REMOVE ----
+    // Remove place
 
     private void handleRemoveSelection() {
         if (selectionManager.nrOfPlacesSelected() == 1) {
@@ -335,10 +430,11 @@ public class MapView {
         }
 
         hasUnsavedChanges = true;
+
         resetModeAfterAction();
     }
 
-    // PATH FINDING
+    // Path finding
 
     private void handleFindPathSelection() {
         if (selectionManager.nrOfPlacesSelected() < 2) {
@@ -356,7 +452,6 @@ public class MapView {
             return;
         }
 
-
         resetModeAfterAction();
         highlightPath(path);
     }
@@ -365,6 +460,7 @@ public class MapView {
         clearPathHighlight();
 
         List<Place> nodes = path.getNodes();
+
         for (Place place : nodes) {
             PlaceView placeView = placeViews.get(place);
 
@@ -376,7 +472,6 @@ public class MapView {
         for (int i = 0; i < nodes.size() - 1; i++) {
             Place from = nodes.get(i);
             Place to = nodes.get(i + 1);
-
 
             for (ConnectionView view : connectionViews) {
                 if (view.connects(from, to)) {
@@ -400,8 +495,12 @@ public class MapView {
 
     private String formatPath(Path<Place> path) {
         StringBuilder result = new StringBuilder();
-        result.append("From ").append(path.getStart())
-                .append(" to ").append(path.getEnd()).append("\n\n");
+
+        result.append("From ")
+                .append(path.getStart())
+                .append(" to ")
+                .append(path.getEnd())
+                .append("\n\n");
 
         for (Edge<Place> edge : path.getEdges()) {
             result.append("Road: ")
@@ -416,106 +515,42 @@ public class MapView {
         }
 
         result.append("\nTotal distance: ").append(path.getTotalWeight());
+
         return result.toString();
     }
 
-    // ---------- Save & load ----------
+    // Drawing
 
-    private void saveMap() {
-        if (model.getPlaces().isEmpty()) {
-            dialogs.showError("There is nothing to save. Add at least one place first");
-            return;
-        }
+    private void drawPlace(Place place) {
+        PlaceView placeView = new PlaceView(place, NORMAL_COLOUR);
 
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Save Map");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Txt Files", "*.txt")
-        );
-        File file = fileChooser.showSaveDialog(root.getScene().getWindow());
+        placeView.getRoot().setOnMousePressed(new SelectHandler(place, placeView));
+        placeView.getRoot().setOnMouseDragged(new DragHandler(placeView));
 
-        if (file == null) {
-            return;
-        }
+        placeViews.put(place, placeView);
+        mapPane.getChildren().add(placeView.getRoot());
 
-        try {
-            model.saveToFile(file, backgroundImagePath);
-            dialogs.showInfo("Success!", "Your map has been saved!");
-            hasUnsavedChanges = false;
-        } catch (IOException e) {
-            dialogs.showError("Unable to save, try again!");
-        }
-
-    }
-
-    private void loadMap() {
-        if (confirmDiscardUnsavedChanges()) {
-            return;
-        }
-
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Load map");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Txt Files", "*.txt")
-        );
-        File file = fileChooser.showOpenDialog(root.getScene().getWindow());
-
-        if (file == null) {
-            return;
-        }
-
-        try {
-            clearMapView();
-
-            setBackgroundImage(model.loadFromFile(file));
-            for (Place place : model.getPlaces()) {
-                drawPlace(place);
-            }
-
-            for (RoadInfo road : model.getRoads()) {
-                Place place1 = placeViews.get(road.from()).getPlace();
-                Place place2 = placeViews.get(road.to()).getPlace();
-                drawLine(place1, place2);
-            }
-            hasUnsavedChanges = false;
-        } catch (FileNotFoundException e) {
-            dialogs.showError("File not found!");
-        } catch (IOException e) {
-            dialogs.showError(e.getMessage());
-        }
-    }
-
-    private void loadBackgroundImage() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Load Background");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Image files", "*.jpg", "*.jpeg", "*.png")
-        );
-
-        File file = fileChooser.showOpenDialog(root.getScene().getWindow());
-
-
-        if (file == null) {
-            return;
-        }
-
-        Image background = new Image(file.toURI().toString());
-        imageView.setImage(background);
-        backgroundImagePath = file.getAbsolutePath();
         hasUnsavedChanges = true;
     }
 
-    private void newMap() {
-        if (confirmDiscardUnsavedChanges()) {
-            return;
-        }
+    private void drawLine(Place place1, Place place2) {
+        PlaceView placeView1 = placeViews.get(place1);
+        PlaceView placeView2 = placeViews.get(place2);
 
-        model.clear();
-        clearMapView();
-        setBackgroundImage("/background.jpg");
+        ConnectionView connectionView = new ConnectionView(
+                placeView1,
+                placeView2,
+                model.getConnectionName(place1, place2),
+                NORMAL_COLOUR
+        );
 
-        hasUnsavedChanges = false;
+        connectionViews.add(connectionView);
+        mapPane.getChildren().add(1, connectionView.getRoot());
+
+        hasUnsavedChanges = true;
     }
+
+    // Background image
 
     private void setBackgroundImage(String path) {
         if (path == null || path.isBlank()) {
@@ -549,6 +584,8 @@ public class MapView {
         }
     }
 
+    // Reset/helper methods
+
     private void clearMapView() {
         for (PlaceView placeView : placeViews.values()) {
             mapPane.getChildren().remove(placeView.getRoot());
@@ -563,15 +600,7 @@ public class MapView {
         selectionManager.clearSelection();
     }
 
-    public boolean confirmDiscardUnsavedChanges() {
-        if (!hasUnsavedChanges) {
-            return false;
-        }
-
-        return !dialogs.confirmDiscardUnsavedChanges();
-    }
-
-    // ---------- Event handlers ----------
+    // Event handler classes
 
     private class SelectHandler implements EventHandler<MouseEvent> {
         private final Place place;
@@ -590,7 +619,6 @@ public class MapView {
     }
 
     private class DragHandler implements EventHandler<MouseEvent> {
-
         private final PlaceView placeView;
 
         public DragHandler(PlaceView placeView) {
@@ -640,13 +668,13 @@ public class MapView {
     }
 
     private class FindPathHandler implements EventHandler<ActionEvent> {
-
         @Override
         public void handle(ActionEvent event) {
             if (model.getRoads().isEmpty()) {
                 dialogs.showError("There are no roads on the map yet. Connect places before finding a path");
                 return;
             }
+
             selectionManager.clearSelection();
             currentMode = Mode.FIND_PATH;
             mapPane.setCursor(Cursor.CROSSHAIR);
