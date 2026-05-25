@@ -194,6 +194,27 @@ public class MapModel {
         return connections;
     }
 
+    public List<RoadInfo> getRoads() {
+        List<RoadInfo> roads = new ArrayList<>();
+
+        for (Place from : graph.getNodes()) {
+            for (Edge<Place> edge : graph.getEdgesFrom(from)) {
+                Place to = edge.getDestination();
+
+                if (from.getName().compareTo(to.getName()) < 0) {
+                    roads.add(new RoadInfo(
+                            from,
+                            to,
+                            edge.getName(),
+                            edge.getWeight()
+                    ));
+                }
+            }
+        }
+
+        return roads;
+    }
+
     public void clear(){
         graph = new ListGraph<>();
     }
