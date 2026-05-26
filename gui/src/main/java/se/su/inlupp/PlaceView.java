@@ -67,11 +67,8 @@ public class PlaceView {
         setColour(normalColor);
     }
 
-    public void setSelected(Paint selectedColour) {
-        setColour(selectedColour);
+    public void highlight(Paint colour) {
+        setColour(colour);
     }
 
-    public void highlight(Paint highlightColour) {
-        setColour(highlightColour);
-    }
 }

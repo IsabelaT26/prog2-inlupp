@@ -31,7 +31,7 @@ public class SelectionManager {
 
         selectedPlaces.add(place);
         selectedPlaceViews.put(place, placeView);
-        placeView.setSelected(SELECTED_COLOUR);
+        placeView.highlight(SELECTED_COLOUR);
     }
 
     public int nrOfPlacesSelected() {

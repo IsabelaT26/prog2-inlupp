@@ -480,7 +480,7 @@ public class MapView {
             }
         }
 
-        dialogs.showInfo("Path found", formatPath(path));
+        dialogs.showPath(path);
     }
 
     private void clearPathHighlight() {
@@ -493,31 +493,7 @@ public class MapView {
         }
     }
 
-    private String formatPath(Path<Place> path) {
-        StringBuilder result = new StringBuilder();
 
-        result.append("From ")
-                .append(path.getStart())
-                .append(" to ")
-                .append(path.getEnd())
-                .append("\n\n");
-
-        for (Edge<Place> edge : path.getEdges()) {
-            result.append("Road: ")
-                    .append(" \"")
-                    .append(edge.getName())
-                    .append("\" ")
-                    .append(" to ")
-                    .append(edge.getDestination())
-                    .append(", distance: ")
-                    .append(edge.getWeight())
-                    .append("\n");
-        }
-
-        result.append("\nTotal distance: ").append(path.getTotalWeight());
-
-        return result.toString();
-    }
 
     // Drawing
 

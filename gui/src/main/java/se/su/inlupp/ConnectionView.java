@@ -63,8 +63,6 @@ public class ConnectionView {
     public void highlight(Color color) {
         line.setStroke(color);
         label.setFill(color);
-        placeView1.setColour(color);
-        placeView2.setColour(color);
     }
 
     public void unhighlight(Color color) {

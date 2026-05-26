@@ -97,6 +97,36 @@ public class MapDialog {
         alert.showAndWait();
     }
 
+    public void showPath(Path<Place> path){
+        showInfo("Path found", formatPath(path));
+    }
+
+    private String formatPath(Path<Place> path) {
+        StringBuilder result = new StringBuilder();
+
+        result.append("From ")
+                .append(path.getStart())
+                .append(" to ")
+                .append(path.getEnd())
+                .append("\n\n");
+
+        for (Edge<Place> edge : path.getEdges()) {
+            result.append("Road: ")
+                    .append(" \"")
+                    .append(edge.getName())
+                    .append("\" ")
+                    .append(" to ")
+                    .append(edge.getDestination())
+                    .append(", distance: ")
+                    .append(edge.getWeight())
+                    .append("\n");
+        }
+
+        result.append("\nTotal distance: ").append(path.getTotalWeight());
+
+        return result.toString();
+    }
+
     public boolean confirmDiscardUnsavedChanges() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
 
