@@ -283,11 +283,17 @@ public class MapView {
         resetAddPlaceMode();
     }
 
+    private void resetAddPlaceMode() {
+        mapPane.setCursor(Cursor.DEFAULT);
+        addPlace.setDisable(false);
+        mapPane.setOnMouseClicked(null);
+    }
+
     // Selection and mode handling
 
     private void handlePlaceClicked(Place place, PlaceView placeView) {
         // if in normal state, the user shouldn't be able to select,
-        // we want it to only be able to do that if an specific action is to be performed.
+        // we want it to only be able to do that if a specific action is to be performed.
         if (currentMode == Mode.NORMAL) {
             return;
         }
@@ -311,12 +317,6 @@ public class MapView {
                 handleDisconnectSelection();
                 break;
         }
-    }
-
-    private void resetAddPlaceMode() {
-        mapPane.setCursor(Cursor.DEFAULT);
-        addPlace.setDisable(false);
-        mapPane.setOnMouseClicked(null);
     }
 
     private void resetModeAfterAction() {
@@ -385,7 +385,7 @@ public class MapView {
         }
 
         if (toRemove == null) {
-            dialogs.showError(place1.getName() + " and " + place2.getName() + " do not have a connection!");
+            dialogs.showError(place1.getName() + " and " + place2.getName() + " do not have a direct connection!");
             resetModeAfterAction();
             return;
         }
@@ -403,37 +403,45 @@ public class MapView {
     // Remove place
 
     private void handleRemoveSelection() {
-        if (selectionManager.nrOfPlacesSelected() == 1) {
-            Place place = selectionManager.getFirstSelectedPlace();
-            PlaceView placeView = placeViews.get(place);
-
-            boolean removalApproved = dialogs.confirmRemovePlace(place.getName());
-
-            if (!removalApproved) {
-                resetModeAfterAction();
-                return;
-            }
-
-            model.removePlace(place);
-            mapPane.getChildren().remove(placeView.getRoot());
-
-            placeViews.remove(place);
-
-            Iterator<ConnectionView> iterator = connectionViews.iterator();
-
-            while (iterator.hasNext()) {
-                ConnectionView view = iterator.next();
-
-                if (view.comesFrom(place)) {
-                    mapPane.getChildren().remove(view.getRoot());
-                    iterator.remove();
-                }
-            }
+        if (selectionManager.nrOfPlacesSelected() != 1) {
+            return;
         }
+
+        Place place = selectionManager.getFirstSelectedPlace();
+
+        if (!dialogs.confirmRemovePlace(place.getName())) {
+            resetModeAfterAction();
+            return;
+        }
+
+        removePlaceFromMap(place);
+        removeConnectionsFromRemovedPlace(place);
+
 
         hasUnsavedChanges = true;
 
         resetModeAfterAction();
+    }
+
+    private void removePlaceFromMap(Place place){
+        PlaceView placeView = placeViews.get(place);
+
+        model.removePlace(place);
+        mapPane.getChildren().remove(placeView.getRoot());
+        placeViews.remove(place);
+    }
+
+    private void removeConnectionsFromRemovedPlace(Place place){
+        Iterator<ConnectionView> iterator = connectionViews.iterator();
+
+        while (iterator.hasNext()) {
+            ConnectionView view = iterator.next();
+
+            if (view.comesFrom(place)) {
+                mapPane.getChildren().remove(view.getRoot());
+                iterator.remove();
+            }
+        }
     }
 
     // Path finding
