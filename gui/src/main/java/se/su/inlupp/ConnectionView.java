@@ -7,8 +7,8 @@ import javafx.scene.text.Text;
 
 public class ConnectionView {
 
-    private PlaceView placeView1;
-    private PlaceView placeView2;
+    private final PlaceView placeView1;
+    private final PlaceView placeView2;
 
     private final Line line;
     private final Text label;

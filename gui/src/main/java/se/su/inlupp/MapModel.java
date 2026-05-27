@@ -82,12 +82,20 @@ public class MapModel {
     //save
 
     public void saveToFile(File file, String backgroundImagePath) throws IOException {
-        FileWriter writer = new FileWriter(file);
+        try (Writer writer = new FileWriter(file)) {
+            writer.write("BACKGROUND\n");
+            writer.write(backgroundImagePath + "\n");
 
-        writer.write("BACKGROUND\n");
-        writer.write(backgroundImagePath + "\n");
+            writer.write("PLACES\n");
+            writePlaces(writer);
 
-        writer.write("PLACES\n");
+            writer.write("CONNECTIONS\n");
+            writeConnections(writer);
+        }
+    }
+
+
+    private void writePlaces(Writer writer) throws IOException {
         for (Place place : graph.getNodes()) {
             writer.write(place.getName());
             writer.write(",");
@@ -96,7 +104,9 @@ public class MapModel {
             writer.write(String.valueOf(place.getY()));
             writer.write("\n");
         }
-        writer.write("CONNECTIONS\n");
+    }
+
+    private void writeConnections(Writer writer) throws IOException {
         Set<String> savedConnections = new HashSet<>();
         for (Place place : graph.getNodes()) {
             for (Edge<Place> connection : graph.getEdgesFrom(place)) {
@@ -120,7 +130,6 @@ public class MapModel {
 
             }
         }
-        writer.close();
     }
 
     //load
