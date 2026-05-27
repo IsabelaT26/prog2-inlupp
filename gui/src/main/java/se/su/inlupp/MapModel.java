@@ -29,7 +29,7 @@ public class MapModel {
 
     public void connectPlaces(Place place1, Place place2, String pathWayName, int distance) {
         if (place1.equals(place2)) {
-            throw new IllegalArgumentException("A place cannot connect to itself.");
+            throw new IllegalArgumentException("A place cannot connect to itself");
         }
 
         if (pathWayName.trim().isEmpty()) {
@@ -37,7 +37,7 @@ public class MapModel {
         }
 
         if (pathWayName.contains(",")) {
-            throw new IllegalArgumentException("Name cannot contain commas.");
+            throw new IllegalArgumentException("Name cannot contain commas");
         }
         if (distance <= 0) {
             throw new IllegalArgumentException("Distance must be greater than 0");
@@ -47,7 +47,13 @@ public class MapModel {
     }
 
     public void disconnectPlaces(Place place1, Place place2) {
-        graph.disconnect(place1, place2);
+        try {
+            graph.disconnect(place1, place2);
+        } catch (IllegalStateException e) {
+            throw new IllegalArgumentException("Places are not connected");
+        } catch (NoSuchElementException e) {
+            throw new IllegalArgumentException("One or both places do not exist in the graph");
+        }
     }
 
     public void useDFS() {

@@ -415,12 +415,14 @@ public class MapView {
             return;
         }
 
-        connectionViews.remove(toRemove);
-        mapPane.getChildren().remove(toRemove.getRoot());
-
-        model.disconnectPlaces(place1, place2);
-
-        hasUnsavedChanges = true;
+        try{
+            model.disconnectPlaces(place1, place2);
+            connectionViews.remove(toRemove);
+            mapPane.getChildren().remove(toRemove.getRoot());
+            hasUnsavedChanges = true;
+        }catch (IllegalArgumentException e){
+           dialogs.showError(e.getMessage());
+        }
 
         resetModeAfterAction();
     }
