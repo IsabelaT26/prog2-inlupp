@@ -24,7 +24,12 @@ public class MapModel {
     }
 
     public void removePlace(Place place) {
-        graph.remove(place);
+        try{
+            graph.remove(place);
+        }catch (NoSuchElementException e){
+            throw new IllegalArgumentException("This place doesn't exist in the graph");
+        }
+
     }
 
     public void connectPlaces(Place place1, Place place2, String pathWayName, int distance) {

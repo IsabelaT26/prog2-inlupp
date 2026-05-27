@@ -451,9 +451,14 @@ public class MapView {
     private void removePlaceFromMap(Place place){
         PlaceView placeView = placeViews.get(place);
 
-        model.removePlace(place);
-        mapPane.getChildren().remove(placeView.getRoot());
-        placeViews.remove(place);
+        try {
+            model.removePlace(place);
+            mapPane.getChildren().remove(placeView.getRoot());
+            placeViews.remove(place);
+        }catch (IllegalArgumentException e){
+            dialogs.showError(e.getMessage());
+        }
+
     }
 
     private void removeConnectionsFromRemovedPlace(Place place){
