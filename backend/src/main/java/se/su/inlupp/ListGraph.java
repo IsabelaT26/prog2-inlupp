@@ -79,7 +79,7 @@ public class ListGraph<T> implements Graph<T> {
     if(!hasNode(node1) || !hasNode(node2)){
       throw new NoSuchElementException();
     }
-    if (weight < 0){
+    if (weight <= 0){
       throw new IllegalArgumentException();
     }
     if(getEdgeBetween(node1, node2) != null){

@@ -39,11 +39,16 @@ public class MapModel {
         if (pathWayName.contains(",")) {
             throw new IllegalArgumentException("Name cannot contain commas");
         }
-        if (distance <= 0) {
-            throw new IllegalArgumentException("Distance must be greater than 0");
-        }
 
-        graph.connect(place1, place2, pathWayName, distance);
+        try {
+            graph.connect(place1, place2, pathWayName, distance);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Distance must be greater than 0");
+        } catch (NoSuchElementException e) {
+            throw new IllegalArgumentException("One or both places do not exist in the graph");
+        } catch (IllegalStateException e) {
+            throw new IllegalArgumentException("These places are already connected");
+        }
     }
 
     public void disconnectPlaces(Place place1, Place place2) {
