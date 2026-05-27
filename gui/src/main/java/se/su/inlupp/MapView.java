@@ -30,6 +30,7 @@ public class MapView {
 
     private static final FileChooser.ExtensionFilter IMAGE_FILTER =
             new FileChooser.ExtensionFilter("Image files", "*.jpg", "*.jpeg", "*.png");
+    private static final String DEFAULT_BACKGROUND_PATH = "/background.jpg";
 
     // Model and helpers
 
@@ -62,11 +63,11 @@ public class MapView {
 
     // View state
 
-    private String backgroundImagePath = "/background.jpg";
+    private String currentBackgroundPath = DEFAULT_BACKGROUND_PATH;
 
-    private final Image originalBackgroundImage = new Image(
+    private final Image defaultBackgroundImage = new Image(
             Objects.requireNonNull(
-                    MapApplication.class.getResourceAsStream(backgroundImagePath)
+                    MapApplication.class.getResourceAsStream(DEFAULT_BACKGROUND_PATH)
             )
     );
 
@@ -140,7 +141,7 @@ public class MapView {
     private Pane createMapPane() {
         mapPane = new Pane();
 
-        imageView = new ImageView(originalBackgroundImage);
+        imageView = new ImageView(defaultBackgroundImage);
         imageView.setPreserveRatio(false);
 
         imageView.fitWidthProperty().bind(mapPane.widthProperty());
@@ -153,6 +154,11 @@ public class MapView {
 
     // Menu/button actions
 
+    private void resetToDefaultBackground() {
+        imageView.setImage(defaultBackgroundImage);
+        currentBackgroundPath = DEFAULT_BACKGROUND_PATH;
+    }
+
     private void newMap() {
         if (shouldCancelDueToUnsavedChanges()) {
             return;
@@ -160,7 +166,7 @@ public class MapView {
 
         model.clear();
         clearMapView();
-        setBackgroundImage("/background.jpg");
+        resetToDefaultBackground();
 
         hasUnsavedChanges = false;
     }
@@ -178,7 +184,7 @@ public class MapView {
         }
 
         try {
-            model.saveToFile(file, backgroundImagePath);
+            model.saveToFile(file, currentBackgroundPath);
             dialogs.showInfo("Success!", "Your map has been saved!");
             hasUnsavedChanges = false;
         } catch (IOException e) {
@@ -226,8 +232,27 @@ public class MapView {
 
         Image background = new Image(file.toURI().toString());
         imageView.setImage(background);
-        backgroundImagePath = file.getAbsolutePath();
+        currentBackgroundPath = file.getAbsolutePath();
         hasUnsavedChanges = true;
+    }
+
+    private void setBackgroundImage(String path) {
+        if (path == null || path.isBlank() || path.equals(DEFAULT_BACKGROUND_PATH)) {
+            resetToDefaultBackground();
+            return;
+        }
+
+        File file = new File(path);
+
+        if (!file.exists()) {
+            resetToDefaultBackground();
+            dialogs.showError("The saved background image could not be found. The default background was used instead.");
+            return;
+        }
+
+        Image background = new Image(file.toURI().toString());
+        imageView.setImage(background);
+        currentBackgroundPath = path;
     }
 
     private File chooseFileToOpen(String title, FileChooser.ExtensionFilter filter) {
@@ -417,9 +442,7 @@ public class MapView {
         removePlaceFromMap(place);
         removeConnectionsFromRemovedPlace(place);
 
-
         hasUnsavedChanges = true;
-
         resetModeAfterAction();
     }
 
@@ -503,8 +526,6 @@ public class MapView {
         }
     }
 
-
-
     // Drawing
 
     private void drawPlace(Place place) {
@@ -535,40 +556,6 @@ public class MapView {
         mapPane.getChildren().add(1, connectionView.getRoot());
 
         hasUnsavedChanges = true;
-    }
-
-    // Background image
-
-    private void setBackgroundImage(String path) {
-        if (path == null || path.isBlank()) {
-            imageView.setImage(originalBackgroundImage);
-            return;
-        }
-
-        try {
-            Image background;
-
-            File file = new File(path);
-
-            if (file.exists()) {
-                background = new Image(file.toURI().toString());
-            } else {
-                String resourcePath = path.startsWith("/") ? path : "/" + path;
-
-                background = new Image(
-                        Objects.requireNonNull(
-                                MapApplication.class.getResourceAsStream(resourcePath)
-                        )
-                );
-            }
-
-            imageView.setImage(background);
-            backgroundImagePath = path;
-
-        } catch (Exception e) {
-            dialogs.showError("Could not load the saved background image. The default background will be used instead.");
-            imageView.setImage(originalBackgroundImage);
-        }
     }
 
     // Reset/helper methods
