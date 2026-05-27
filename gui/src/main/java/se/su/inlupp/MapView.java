@@ -215,9 +215,7 @@ public class MapView {
             }
 
             for (RoadInfo road : model.getRoads()) {
-                Place place1 = placeViews.get(road.from()).getPlace();
-                Place place2 = placeViews.get(road.to()).getPlace();
-                drawLine(place1, place2);
+                drawLine(road);
             }
 
             hasUnsavedChanges = false;
@@ -355,7 +353,7 @@ public class MapView {
 
             try {
                 model.connectPlaces(place1, place2, roadName, roadDistance);
-                drawLine(place1, place2);
+                drawLine(roadInfo.get());
                 hasUnsavedChanges = true;
             } catch (IllegalArgumentException e) {
                 dialogs.showError(e.getMessage());
@@ -509,14 +507,15 @@ public class MapView {
         hasUnsavedChanges = true;
     }
 
-    private void drawLine(Place place1, Place place2) {
-        PlaceView placeView1 = placeViews.get(place1);
-        PlaceView placeView2 = placeViews.get(place2);
+    private void drawLine(RoadInfo roadInfo) {
+
+        PlaceView placeView1 = placeViews.get(roadInfo.from());
+        PlaceView placeView2 = placeViews.get(roadInfo.to());
 
         ConnectionView connectionView = new ConnectionView(
                 placeView1,
                 placeView2,
-                model.getConnectionName(place1, place2),
+                roadInfo.name(),
                 NORMAL_COLOUR
         );
 

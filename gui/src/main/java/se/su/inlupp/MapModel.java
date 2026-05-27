@@ -50,10 +50,6 @@ public class MapModel {
         graph.disconnect(place1, place2);
     }
 
-    public String getConnectionName(Place place1, Place place2) {
-        return graph.getEdgeBetween(place1, place2).getName();
-    }
-
     public void useDFS() {
         pathFinder = new DFSPathFinder<>();
     }
