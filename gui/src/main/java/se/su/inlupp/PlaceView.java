@@ -11,7 +11,7 @@ public class PlaceView {
     private static final double RADIUS = 20;
     private static final double LABEL_X_OFFSET = -20;
     private static final double LABEL_Y_OFFSET = -25;
-    private Color normalColor;
+    private final Color normalColor;
 
     private final Place place;
     private final Circle circle;

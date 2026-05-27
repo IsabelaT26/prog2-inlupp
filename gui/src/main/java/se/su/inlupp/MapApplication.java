@@ -17,7 +17,7 @@ public class MapApplication extends Application {
         stage.setScene(scene);
         stage.show();
         stage.setOnCloseRequest(event -> {
-            if (view.confirmDiscardUnsavedChanges()) {
+            if (view.shouldCancelDueToUnsavedChanges()) {
                 event.consume();
             }
         });

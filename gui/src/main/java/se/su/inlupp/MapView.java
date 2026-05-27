@@ -25,6 +25,11 @@ public class MapView {
 
     private static final Color NORMAL_COLOUR = Color.DARKBLUE;
     private static final Color HIGHLIGHT_COLOUR = Color.GREEN;
+    private static final FileChooser.ExtensionFilter TXT_FILTER =
+            new FileChooser.ExtensionFilter("Txt Files", "*.txt");
+
+    private static final FileChooser.ExtensionFilter IMAGE_FILTER =
+            new FileChooser.ExtensionFilter("Image files", "*.jpg", "*.jpeg", "*.png");
 
     // Model and helpers
 
@@ -61,7 +66,7 @@ public class MapView {
 
     private final Image originalBackgroundImage = new Image(
             Objects.requireNonNull(
-                    MapApplication.class.getResourceAsStream("/background.jpg")
+                    MapApplication.class.getResourceAsStream(backgroundImagePath)
             )
     );
 
@@ -84,7 +89,7 @@ public class MapView {
         return root;
     }
 
-    public boolean confirmDiscardUnsavedChanges() {
+    public boolean shouldCancelDueToUnsavedChanges() {
         if (!hasUnsavedChanges) {
             return false;
         }
@@ -121,7 +126,6 @@ public class MapView {
         MenuBar menuBar = new MenuBar(fileMenu, pathMenu);
 
         addPlace.setOnAction(event -> enterAddPlaceMode());
-
         connect.setOnAction(new ConnectButtonHandler());
         disconnect.setOnAction(new DisconnectButtonHandler());
         findPath.setOnAction(new FindPathHandler());
@@ -150,7 +154,7 @@ public class MapView {
     // Menu/button actions
 
     private void newMap() {
-        if (confirmDiscardUnsavedChanges()) {
+        if (shouldCancelDueToUnsavedChanges()) {
             return;
         }
 
@@ -167,13 +171,7 @@ public class MapView {
             return;
         }
 
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Save Map");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Txt Files", "*.txt")
-        );
-
-        File file = fileChooser.showSaveDialog(root.getScene().getWindow());
+        File file = chooseFileToSave("Save Map", TXT_FILTER);
 
         if (file == null) {
             return;
@@ -189,17 +187,11 @@ public class MapView {
     }
 
     private void loadMap() {
-        if (confirmDiscardUnsavedChanges()) {
+        if (shouldCancelDueToUnsavedChanges()) {
             return;
         }
 
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Load map");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Txt Files", "*.txt")
-        );
-
-        File file = fileChooser.showOpenDialog(root.getScene().getWindow());
+        File file = chooseFileToOpen("Load Map", TXT_FILTER);
 
         if (file == null) {
             return;
@@ -207,7 +199,6 @@ public class MapView {
 
         try {
             clearMapView();
-
             setBackgroundImage(model.loadFromFile(file));
 
             for (Place place : model.getPlaces()) {
@@ -227,13 +218,7 @@ public class MapView {
     }
 
     private void loadBackgroundImage() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Load Background");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Image files", "*.jpg", "*.jpeg", "*.png")
-        );
-
-        File file = fileChooser.showOpenDialog(root.getScene().getWindow());
+        File file = chooseFileToOpen("Load Background", IMAGE_FILTER);
 
         if (file == null) {
             return;
@@ -243,6 +228,23 @@ public class MapView {
         imageView.setImage(background);
         backgroundImagePath = file.getAbsolutePath();
         hasUnsavedChanges = true;
+    }
+
+    private File chooseFileToOpen(String title, FileChooser.ExtensionFilter filter) {
+        FileChooser fileChooser = createFileChooser(title, filter);
+        return fileChooser.showOpenDialog(root.getScene().getWindow());
+    }
+
+    private File chooseFileToSave(String title, FileChooser.ExtensionFilter filter) {
+        FileChooser fileChooser = createFileChooser(title, filter);
+        return fileChooser.showSaveDialog(root.getScene().getWindow());
+    }
+
+    private FileChooser createFileChooser(String title, FileChooser.ExtensionFilter filter) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(title);
+        fileChooser.getExtensionFilters().add(filter);
+        return fileChooser;
     }
 
     // Add place
@@ -284,28 +286,30 @@ public class MapView {
     // Selection and mode handling
 
     private void handlePlaceClicked(Place place, PlaceView placeView) {
-        switch (currentMode) {
-            case NORMAL:
-                return;
+        // if in normal state, the user shouldn't be able to select,
+        // we want it to only be able to do that if an specific action is to be performed.
+        if (currentMode == Mode.NORMAL) {
+            return;
+        }
 
+        selectionManager.toggleSelection(place, placeView);
+
+        switch (currentMode) {
             case REMOVE:
-                selectionManager.toggleSelection(place, placeView);
                 handleRemoveSelection();
-                return;
+                break;
 
             case FIND_PATH:
-                selectionManager.toggleSelection(place, placeView);
                 handleFindPathSelection();
-                return;
+                break;
 
             case CONNECT:
-                selectionManager.toggleSelection(place, placeView);
                 handleConnectSelection();
-                return;
+                break;
 
             case DISCONNECT:
-                selectionManager.toggleSelection(place, placeView);
                 handleDisconnectSelection();
+                break;
         }
     }
 
