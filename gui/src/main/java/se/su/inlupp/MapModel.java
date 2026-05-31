@@ -94,7 +94,6 @@ public class MapModel {
         }
     }
 
-
     private void writePlaces(Writer writer) throws IOException {
         for (Place place : graph.getNodes()) {
             writer.write(place.getName());
@@ -169,7 +168,7 @@ public class MapModel {
                 if (readingPlaces) {
                     readPlace(line);
                 } else if (readingConnections) {
-                    readConnection(line);
+                    readConnections(line);
                 }
             }
         }
@@ -196,7 +195,7 @@ public class MapModel {
         }
     }
 
-    private void readConnection(String line) throws IOException {
+    private void readConnections(String line) throws IOException {
         String[] connectionParts = line.split(",");
 
         if (connectionParts.length != 4) {
@@ -238,7 +237,7 @@ public class MapModel {
     public List<RoadInfo> getRoads() {
         List<RoadInfo> roads = new ArrayList<>();
 
-        for (Place from : graph.getNodes()) {
+        for (Place from : getPlaces()) {
             for (Edge<Place> edge : graph.getEdgesFrom(from)) {
                 Place to = edge.getDestination();
 
@@ -253,7 +252,7 @@ public class MapModel {
             }
         }
 
-        return roads;
+        return List.copyOf(roads);
     }
 
     public void clear() {

@@ -1,7 +1,6 @@
 package se.su.inlupp;
 
 import javafx.scene.Group;
-import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Text;
@@ -11,7 +10,7 @@ public class PlaceView {
     private static final double RADIUS = 20;
     private static final double LABEL_X_OFFSET = -20;
     private static final double LABEL_Y_OFFSET = -25;
-    private final Color normalColor;
+    private final Paint normalColour;
 
     private final Place place;
     private final Circle circle;
@@ -19,15 +18,15 @@ public class PlaceView {
     private final Group root;
 
 
-    public PlaceView(Place place, Color normalColor) {
+    public PlaceView(Place place, Paint normalColour) {
         this.place = place;
-        this.normalColor = normalColor;
+        this.normalColour = normalColour;
 
         circle = new Circle(place.getX(), place.getY(), RADIUS);
-        circle.setFill(normalColor);
+        circle.setFill(normalColour);
 
         label = new Text(place.getX() + LABEL_X_OFFSET, place.getY() + LABEL_Y_OFFSET, place.getName());
-        label.setFill(normalColor);
+        label.setFill(normalColour);
 
         root = new Group(circle, label);
     }
@@ -42,10 +41,6 @@ public class PlaceView {
 
     public Circle getCircle() {
         return circle;
-    }
-
-    public Text getLabel() {
-        return label;
     }
 
     public void moveTo(double x, double y) {
@@ -64,7 +59,7 @@ public class PlaceView {
     }
 
     public void setNormal() {
-        setColour(normalColor);
+        setColour(normalColour);
     }
 
     public void highlight(Paint colour) {

@@ -76,7 +76,6 @@ public class MapDialog {
         }
     }
 
-
     public void showError(String errorMessage) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
 
@@ -139,11 +138,11 @@ public class MapDialog {
         return result.isPresent() && result.get() == ButtonType.OK;
     }
 
-    public boolean confirmRemovePlace(String placeName) {
+    public boolean confirmRemovePlace(Place place) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
 
         alert.setTitle("Remove place");
-        alert.setHeaderText("Remove " + placeName + "?");
+        alert.setHeaderText("Remove " + place.getName() + "?");
         alert.setContentText("This will also remove all roads connected to this place.");
 
         Optional<ButtonType> result = alert.showAndWait();

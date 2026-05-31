@@ -46,7 +46,6 @@ public class SelectionManager {
         return selectedPlaces.get(1);
     }
 
-
     public void clearSelection() {
         for (PlaceView placeView : selectedPlaceViews.values()) {
             placeView.setNormal();

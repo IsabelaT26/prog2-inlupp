@@ -436,7 +436,7 @@ public class MapView {
 
         Place place = selectionManager.getFirstSelectedPlace();
 
-        if (!dialogs.confirmRemovePlace(place.getName())) {
+        if (!dialogs.confirmRemovePlace(place)) {
             resetModeAfterAction();
             return;
         }

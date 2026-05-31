@@ -48,12 +48,7 @@ public class BFSPathFinder<T> implements PathFinder<T> {
     return parentMap;
   }
 
-  private List<Edge<T>> reconstructPath(
-          Graph<T> graph,
-          T start,
-          T goal,
-          Map<T, T> parentMap
-  ) {
+  private List<Edge<T>> reconstructPath(Graph<T> graph, T start, T goal, Map<T, T> parentMap) {
     LinkedList<Edge<T>> path = new LinkedList<>();
     T current = goal;
 

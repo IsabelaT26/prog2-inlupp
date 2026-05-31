@@ -1,7 +1,7 @@
 package se.su.inlupp;
 
 import javafx.scene.Group;
-import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
 import javafx.scene.text.Text;
 
@@ -18,7 +18,7 @@ public class ConnectionView {
             PlaceView placeView1,
             PlaceView placeView2,
             String connectionName,
-            Color color
+            Paint colour
     ) {
         this.placeView1 = placeView1;
         this.placeView2 = placeView2;
@@ -28,11 +28,11 @@ public class ConnectionView {
         line.startYProperty().bind(placeView1.getCircle().centerYProperty());
         line.endXProperty().bind(placeView2.getCircle().centerXProperty());
         line.endYProperty().bind(placeView2.getCircle().centerYProperty());
-        line.setStroke(color);
+        line.setStroke(colour);
         line.setStrokeWidth(3);
 
         label = new Text(connectionName);
-        label.setFill(color);
+        label.setFill(colour);
 
         label.xProperty().bind(
                 line.startXProperty().add(line.endXProperty()).divide(2)
@@ -60,13 +60,13 @@ public class ConnectionView {
         return placeView1.getPlace().equals(place) || placeView2.getPlace().equals(place);
     }
 
-    public void highlight(Color color) {
-        line.setStroke(color);
-        label.setFill(color);
+    public void highlight(Paint colour) {
+        line.setStroke(colour);
+        label.setFill(colour);
     }
 
-    public void unhighlight(Color color) {
-        line.setStroke(color);
-        label.setFill(color);
+    public void unhighlight(Paint colour) {
+        line.setStroke(colour);
+        label.setFill(colour);
     }
 }
