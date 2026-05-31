@@ -459,6 +459,7 @@ public class MapView {
             dialogs.showError(e.getMessage());
         }
 
+
     }
 
     private void removeConnectionsFromRemovedPlace(Place place){

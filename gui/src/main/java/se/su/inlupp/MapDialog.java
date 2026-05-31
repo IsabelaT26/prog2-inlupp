@@ -26,49 +26,14 @@ public class MapDialog {
         TextField nameField = new TextField();
         TextField distanceField = new TextField();
 
-        VBox box = new VBox(
-                10,
-                new Label("Road name:"),
-                nameField,
-                new Label("Distance:"),
-                distanceField
-        );
+        dialog.getDialogPane().setContent(createContent(nameField, distanceField));
 
-        dialog.getDialogPane().setContent(box);
-
-        ButtonType okButton = new ButtonType(
-                "OK",
-                ButtonBar.ButtonData.OK_DONE
-        );
-
-        dialog.getDialogPane().getButtonTypes().addAll(
-                okButton,
-                ButtonType.CANCEL
-        );
+        ButtonType okButton = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(okButton, ButtonType.CANCEL);
 
         dialog.setResultConverter(button -> {
             if (button == okButton) {
-                String name = nameField.getText().trim();
-
-                if (name.isEmpty()) {
-                    showError("Road name cannot be empty.");
-                    return null;
-                }
-
-                try {
-                    int distance = Integer.parseInt(distanceField.getText().trim());
-
-                    if (distance <= 0) {
-                        showError("Distance must be greater than 0.");
-                        return null;
-                    }
-
-                    return new RoadInfo(from, to, name, distance);
-
-                } catch (NumberFormatException e) {
-                    showError("Distance must be a number.");
-                    return null;
-                }
+                return createRoadInfo(from, to, nameField, distanceField);
             }
 
             return null;
@@ -76,6 +41,41 @@ public class MapDialog {
 
         return dialog.showAndWait();
     }
+
+    private VBox createContent(TextField nameField, TextField distanceField) {
+        return new VBox(
+                10,
+                new Label("Road name:"),
+                nameField,
+                new Label("Distance:"),
+                distanceField
+        );
+    }
+
+    private RoadInfo createRoadInfo(Place from, Place to, TextField nameField, TextField distanceField) {
+        String name = nameField.getText().trim();
+
+        if (name.isEmpty()) {
+            showError("Road name cannot be empty.");
+            return null;
+        }
+
+        try {
+            int distance = Integer.parseInt(distanceField.getText().trim());
+
+            if (distance <= 0) {
+                showError("Distance must be greater than 0.");
+                return null;
+            }
+
+            return new RoadInfo(from, to, name, distance);
+
+        } catch (NumberFormatException e) {
+            showError("Distance must be a number.");
+            return null;
+        }
+    }
+
 
     public void showError(String errorMessage) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
